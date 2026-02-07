@@ -1,0 +1,7 @@
+## Interface: 11200
+## Title: THUD_Raid_Tools
+## Notes: Inspired by Method Raid Tools, A Simple Turtle Wow Raid inpection and annoument Raid Addon
+## Author: Erros&Senzei
+## Version: Prerelase
+
+THUD_Raid_Tools.lua
