@@ -1,5 +1,5 @@
 # THUD-Raid-Tools
-Thud Raid Tools for Turtle WoW. Tracks all standard and custom Turtle WoW consumables including Jujus, Concoctions, R.O.I.D.S., and new Elixirs. Features an easy-to-use GUI for raid leaders to verify buffs instantly. Coded by Senzei and Erros. Inspired by Method Raid Tools, A Simple Turtle Wow Raid inpection and annoument Raid Addon
+Thud Raid Tools for Turtle WoW. Tracks all standard and custom Turtle WoW consumables. Features an easy-to-use GUI for raid leaders to verify buffs instantly. Coded by Senzei and Erros. Inspired by Method Raid Tools.
 
 /trt will open this window showing all class buffs as well as consumables they are hoverable to see what you are missing
 <img width="1551" height="827" alt="image" src="https://github.com/user-attachments/assets/732acd64-dccf-4a1a-9244-df2e7ad8522f" />
