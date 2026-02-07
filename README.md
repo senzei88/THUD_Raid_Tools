@@ -1,4 +1,4 @@
-# THUD-Raid-Tools
+# THUD Raid Tools
 Thud Raid Tools for Turtle WoW. Tracks all standard and custom Turtle WoW consumables. Features an easy-to-use GUI for raid leaders to verify buffs instantly. Coded by Senzei and Erros. Inspired by Method Raid Tools.
 
 /trt will open this window showing all class buffs as well as consumables they are hoverable to see what you are missing
