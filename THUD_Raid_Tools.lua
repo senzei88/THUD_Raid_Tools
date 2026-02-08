@@ -298,6 +298,7 @@ end
 local function ScanRaid()
     local numRaid = GetNumRaidMembers()
     
+    -- 1. Adjust Frame Height
     local displayRows = numRaid
     if displayRows == 0 then displayRows = 1 end
     
@@ -307,6 +308,29 @@ local function ScanRaid()
         line:SetHeight((displayRows * ROW_HEIGHT) + 25)
     end
 
+    -- 2. Collect Raid Members
+    local memberList = {}
+    if numRaid > 0 then
+        for i = 1, numRaid do
+            local unit = "raid"..i
+            local name = UnitName(unit)
+            local _, class = UnitClass(unit)
+            if name then
+                table.insert(memberList, { name = name, class = class, unit = unit })
+            end
+        end
+    end
+
+    -- 3. Sort Raid Members (Class Alphabetical, then Name)
+    table.sort(memberList, function(a, b)
+        if a.class == b.class then
+            return a.name < b.name
+        else
+            return a.class < b.class
+        end
+    end)
+
+    -- 4. Render Rows
     for i = 1, MAX_ROWS do
         local row = rows[i]
         
@@ -315,7 +339,7 @@ local function ScanRaid()
         else
             row:Show()
             row.name:SetText("")
-            row.readyIcon:SetTexture("") -- Clear ready icon by default
+            row.readyIcon:SetTexture("")
             for _, iconBtn in pairs(row.classIcons) do iconBtn.texture:SetVertexColor(1, 1, 1, 0.1) end
             for _, iconBtn in pairs(row.consumeIcons) do iconBtn:Hide() end
 
@@ -324,50 +348,50 @@ local function ScanRaid()
                     row.name:SetText("Not in raid.")
                     row.name:SetTextColor(1, 1, 1)
                 end
-            else
-                local unit = "raid"..i
-                local name = UnitName(unit)
-                local _, class = UnitClass(unit)
+            elseif memberList[i] then
+                -- Load data from sorted list
+                local data = memberList[i]
+                local name = data.name
+                local class = data.class
+                local unit = data.unit
                 
-                if name then
-                    local r, g, b = GetClassColor(class)
-                    row.name:SetText(name)
-                    row.name:SetTextColor(r, g, b)
+                local r, g, b = GetClassColor(class)
+                row.name:SetText(name)
+                row.name:SetTextColor(r, g, b)
+                
+                -- Update Ready Icon
+                if raidReadyStatus[name] == "ready" then
+                    row.readyIcon:SetTexture("Interface\\RAIDFRAME\\ReadyCheck-Ready")
+                elseif raidReadyStatus[name] == "notready" then
+                    row.readyIcon:SetTexture("Interface\\RAIDFRAME\\ReadyCheck-NotReady")
+                elseif raidReadyStatus[name] == "waiting" then
+                    row.readyIcon:SetTexture("Interface\\RAIDFRAME\\ReadyCheck-Waiting")
+                end
+                
+                local foundConsumes = {}
+                
+                for b = 1, 32 do
+                    local texture = UnitBuff(unit, b)
+                    if not texture then break end
                     
-                    -- Update Ready Icon based on stored state
-                    if raidReadyStatus[name] == "ready" then
-                        row.readyIcon:SetTexture("Interface\\RAIDFRAME\\ReadyCheck-Ready")
-                    elseif raidReadyStatus[name] == "notready" then
-                        row.readyIcon:SetTexture("Interface\\RAIDFRAME\\ReadyCheck-NotReady")
-                    elseif raidReadyStatus[name] == "waiting" then
-                        row.readyIcon:SetTexture("Interface\\RAIDFRAME\\ReadyCheck-Waiting")
+                    if classBuffTextures[texture] then
+                        local colIndex = classBuffTextures[texture]
+                        row.classIcons[colIndex].texture:SetVertexColor(1, 1, 1, 1.0)
                     end
                     
-                    local foundConsumes = {}
-                    
-                    for b = 1, 32 do
-                        local texture = UnitBuff(unit, b)
-                        if not texture then break end
-                        
-                        if classBuffTextures[texture] then
-                            local colIndex = classBuffTextures[texture]
-                            row.classIcons[colIndex].texture:SetVertexColor(1, 1, 1, 1.0)
-                        end
-                        
-                        if importantBuffs[texture] then
-                            table.insert(foundConsumes, {texture = texture, data = importantBuffs[texture]})
-                        end
+                    if importantBuffs[texture] then
+                        table.insert(foundConsumes, {texture = texture, data = importantBuffs[texture]})
                     end
-                    
-                    table.sort(foundConsumes, function(a, b) return a.data.priority < b.data.priority end)
-                    
-                    for idx, buff in pairs(foundConsumes) do
-                        if idx <= 8 then
-                            local iconBtn = row.consumeIcons[idx]
-                            iconBtn.texture:SetTexture(buff.texture)
-                            iconBtn.tooltipText = buff.data.name
-                            iconBtn:Show()
-                        end
+                end
+                
+                table.sort(foundConsumes, function(a, b) return a.data.priority < b.data.priority end)
+                
+                for idx, buff in pairs(foundConsumes) do
+                    if idx <= 8 then
+                        local iconBtn = row.consumeIcons[idx]
+                        iconBtn.texture:SetTexture(buff.texture)
+                        iconBtn.tooltipText = buff.data.name
+                        iconBtn:Show()
                     end
                 end
             end
@@ -403,6 +427,10 @@ local function AnnounceMissing()
         -- Ignore Dead or Offline
         if UnitIsConnected(unit) and not UnitIsDeadOrGhost(unit) then
             
+            -- Prepare colored name for announcement
+            local r, g, b = GetClassColor(class)
+            local coloredName = string.format("|cff%02x%02x%02x%s|r", r*255, g*255, b*255, name)
+            
             -- Check what they HAVE
             local hasFort, hasMark, hasInt, hasSpirit, hasShadow, hasMight, hasKings, hasWisdom, hasSalv = false, false, false, false, false, false, false, false, false
             
@@ -424,28 +452,28 @@ local function AnnounceMissing()
             -- Check what they NEED
             
             -- Universal Checks (Everyone needed)
-            if not hasFort then table.insert(missingData["Fortitude"], name) end
-            if not hasMark then table.insert(missingData["Mark"], name) end
-            if not hasShadow then table.insert(missingData["Shadow"], name) end
+            if not hasFort then table.insert(missingData["Fortitude"], coloredName) end
+            if not hasMark then table.insert(missingData["Mark"], coloredName) end
+            if not hasShadow then table.insert(missingData["Shadow"], coloredName) end
             
             -- Paladin Checks
-            if not hasKings then table.insert(missingData["Kings"], name) end
+            if not hasKings then table.insert(missingData["Kings"], coloredName) end
             
             -- Might: Melee/Hunters Only
             if NeedsMight(class) then
-                if not hasMight then table.insert(missingData["Might"], name) end
+                if not hasMight then table.insert(missingData["Might"], coloredName) end
             end
 
             -- Wisdom: Mana Users Only (Excludes Rogues/Warriors)
             if UsesMana(class) then
-                if not hasWisdom then table.insert(missingData["Wisdom"], name) end
+                if not hasWisdom then table.insert(missingData["Wisdom"], coloredName) end
             end
 
             
             -- Mana User Checks (Int/Spirit)
             if UsesMana(class) then
-                if not hasInt then table.insert(missingData["Intellect"], name) end
-                if not hasSpirit then table.insert(missingData["Spirit"], name) end
+                if not hasInt then table.insert(missingData["Intellect"], coloredName) end
+                if not hasSpirit then table.insert(missingData["Spirit"], coloredName) end
             end
         end
     end
@@ -594,4 +622,10 @@ SLASH_RAIDINSPECT2 = "/THUDinspect"
 SlashCmdList["RAIDINSPECT"] = function()
     mainFrame:Show()
     ScanRaid()
+end
+
+-- Auto Announce Slash Command
+SLASH_TRTA1 = "/trta"
+SlashCmdList["TRTA"] = function()
+    AnnounceMissing()
 end
