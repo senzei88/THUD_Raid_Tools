@@ -121,7 +121,7 @@ local importantBuffs = {
     ["Interface\\Icons\\INV_Potion_31"] = {name="Zanza", priority=4},
     ["Interface\\Icons\\Spell_Nature_Strength"] = {name="Rage of Ages", priority=4}, 
     ["Interface\\Icons\\Spell_Misc_Food"] = {name="Well Fed", priority=4},
-    ["Interface\\Icons\\Spell_Nature_ForceOfNature"] = {name="Scorpok", priority=4},
+    ["Interface\\Icons\\INV_Misc_Dust_02"] = {name="Scorpok", priority=4},
     ["Interface\\Icons\\Spell_Ice_Lament"] = {name="Cerebral Cortex", priority=4},
     ["Interface\\Icons\\inv_potion_114"] = {name="Dreamtonic", priority=4},
 }
@@ -436,9 +436,8 @@ local function AnnounceMissing()
         -- Ignore Dead or Offline
         if UnitIsConnected(unit) and not UnitIsDeadOrGhost(unit) then
             
-            -- Prepare colored name for announcement
-            local r, g, b = GetClassColor(class)
-            local coloredName = string.format("|cff%02x%02x%02x%s|r", r*255, g*255, b*255, name)
+            -- Prepare name for announcement (REMOVED COLOR CODES TO FIX ERROR)
+            local coloredName = name
             
             -- Check what they HAVE
             local hasFort, hasMark, hasInt, hasSpirit, hasShadow, hasMight, hasKings, hasWisdom, hasSalv, hasChamp = false, false, false, false, false, false, false, false, false, false
