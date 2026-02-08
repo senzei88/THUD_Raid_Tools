@@ -8,7 +8,8 @@ local NAME_WIDTH = 120 -- Widened slightly for Ready Icon
 
 -- Main Frame Setup
 local mainFrame = CreateFrame("Frame", "RaidInspectFrame", UIParent)
-mainFrame:SetWidth(NAME_WIDTH + (9 * COL_WIDTH) + 200) 
+-- UPDATED WIDTH: (10 * COL_WIDTH)
+mainFrame:SetWidth(NAME_WIDTH + (10 * COL_WIDTH) + 200) 
 mainFrame:SetHeight(90 + (MAX_ROWS * ROW_HEIGHT)) 
 mainFrame:SetPoint("CENTER", UIParent, "CENTER")
 mainFrame:SetBackdrop({
@@ -36,7 +37,7 @@ closeBtn:SetPoint("TOPRIGHT", mainFrame, "TOPRIGHT", -8, -8)
 
 -- --- DATA DEFINITIONS ---
 
--- 1. Class Buff Columns
+-- 1. Class Buff Columns (UPDATED: Added 10th Column "Champion")
 local classBuffCols = {
     [1] = { name="Fortitude", icon="Interface\\Icons\\Spell_Holy_WordFortitude" },
     [2] = { name="Mark",      icon="Interface\\Icons\\Spell_Nature_Regeneration" },
@@ -47,9 +48,10 @@ local classBuffCols = {
     [7] = { name="Kings",     icon="Interface\\Icons\\Spell_Magic_MageArmor" },
     [8] = { name="Wisdom",    icon="Interface\\Icons\\Spell_Holy_SealOfWisdom" },
     [9] = { name="Salv",      icon="Interface\\Icons\\Spell_Holy_SealOfSalvation" },
+    [10]= { name="Champion",  icon="Interface\\Icons\\Spell_Holy_ProclaimChampion_02" }, 
 }
 
--- Map specific textures
+-- Map specific textures (UPDATED: Added Mapping for Champion)
 local classBuffTextures = {
     ["Interface\\Icons\\Spell_Holy_WordFortitude"] = 1,
     ["Interface\\Icons\\Spell_Holy_PrayerOfFortitude"] = 1,
@@ -69,6 +71,7 @@ local classBuffTextures = {
     ["Interface\\Icons\\Spell_Holy_GreaterBlessingofWisdom"] = 8,
     ["Interface\\Icons\\Spell_Holy_SealOfSalvation"] = 9,
     ["Interface\\Icons\\Spell_Holy_GreaterBlessingofSalvation"] = 9,
+    ["Interface\\Icons\\Spell_Holy_ProclaimChampion_02"] = 10,
 }
 
 -- 2. Consumables
@@ -101,7 +104,6 @@ local importantBuffs = {
     ["Interface\\Icons\\INV_Potion_28"] = {name="Gift of Arthas", priority=3},
     ["Interface\\Icons\\inv_potion_113"] = {name="Dreamshard", priority=3},
     ["Interface\\Icons\\inv_yellow_purple_elixir_2"] = {name="Concoction of the Arcane Giant", priority=3},
-    ["Interface\\Icons\\inv_green_pink_elixir_1"] = {name="Concoction of the Dream Water", priority=3},
     ["Interface\\Icons\\inv_blue_gold_elixir_2"] = {name="Concoction of the Emerald Mongoose", priority=3},
     ["Interface\\Icons\\INV_Potion_79"] = {name="Trolls Blood", priority=3},
     ["Interface\\Icons\\INV_Potion_44"] = {name="Elixir of Fort", priority=3},
@@ -119,7 +121,7 @@ local importantBuffs = {
     ["Interface\\Icons\\INV_Potion_31"] = {name="Zanza", priority=4},
     ["Interface\\Icons\\Spell_Nature_Strength"] = {name="Rage of Ages", priority=4}, 
     ["Interface\\Icons\\Spell_Misc_Food"] = {name="Well Fed", priority=4},
-    ["Interface\\Icons\\INV_Misc_Dust_02"] = {name="Scorpok", priority=4},
+    ["Interface\\Icons\\Spell_Nature_ForceOfNature"] = {name="Scorpok", priority=4},
     ["Interface\\Icons\\Spell_Ice_Lament"] = {name="Cerebral Cortex", priority=4},
     ["Interface\\Icons\\inv_potion_114"] = {name="Dreamtonic", priority=4},
 }
@@ -138,8 +140,8 @@ nameHeader:SetJustifyH("LEFT")
 nameHeader:SetText("Name")
 nameHeader:SetTextColor(0.8, 0.8, 0.8)
 
--- Header Icons with Tooltips
-for i = 1, 9 do
+-- Header Icons with Tooltips (UPDATED: Loop 1 to 10)
+for i = 1, 10 do
     local iconBtn = CreateFrame("Button", nil, headers)
     iconBtn:SetWidth(ICON_SIZE)
     iconBtn:SetHeight(ICON_SIZE)
@@ -160,7 +162,8 @@ for i = 1, 9 do
 end
 
 local consumeHeader = headers:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-consumeHeader:SetPoint("LEFT", headers, "LEFT", NAME_WIDTH + (9 * COL_WIDTH) + 10, 0)
+-- UPDATED: Positioned after 10th col
+consumeHeader:SetPoint("LEFT", headers, "LEFT", NAME_WIDTH + (10 * COL_WIDTH) + 10, 0)
 consumeHeader:SetText("Consumables")
 consumeHeader:SetTextColor(0.8, 0.8, 0.8)
 
@@ -178,7 +181,8 @@ local function CreateVerticalLine(xOffset)
 end
 
 CreateVerticalLine(NAME_WIDTH)
-for i = 1, 9 do
+-- UPDATED: Loop 1 to 10
+for i = 1, 10 do
     CreateVerticalLine(NAME_WIDTH + (i * COL_WIDTH))
 end
 
@@ -210,9 +214,9 @@ local function CreateRows()
         row.name:SetWidth(NAME_WIDTH - 20)
         row.name:SetJustifyH("LEFT")
         
-        -- Class Icons (Now Buttons)
+        -- Class Icons (Buttons) UPDATED: Loop 1 to 10
         row.classIcons = {}
-        for c = 1, 9 do
+        for c = 1, 10 do
             local iconBtn = CreateFrame("Button", nil, row)
             iconBtn:SetWidth(ICON_SIZE)
             iconBtn:SetHeight(ICON_SIZE)
@@ -236,13 +240,14 @@ local function CreateRows()
             table.insert(row.classIcons, iconBtn)
         end
         
-        -- Consumable Icons (Now Buttons)
+        -- Consumable Icons (Buttons)
         row.consumeIcons = {}
         for j = 1, 8 do
             local iconBtn = CreateFrame("Button", nil, row)
             iconBtn:SetWidth(ICON_SIZE)
             iconBtn:SetHeight(ICON_SIZE)
-            local startX = NAME_WIDTH + (9 * COL_WIDTH) + 10
+            -- UPDATED: Start X after 10th col
+            local startX = NAME_WIDTH + (10 * COL_WIDTH) + 10
             iconBtn:SetPoint("LEFT", row, "LEFT", startX + ((j-1) * (ICON_SIZE + 2)), 0)
             
             local tex = iconBtn:CreateTexture(nil, "OVERLAY")
@@ -376,7 +381,10 @@ local function ScanRaid()
                     
                     if classBuffTextures[texture] then
                         local colIndex = classBuffTextures[texture]
-                        row.classIcons[colIndex].texture:SetVertexColor(1, 1, 1, 1.0)
+                        -- Ensure safety if index is out of bounds (though it shouldn't be)
+                        if row.classIcons[colIndex] then
+                             row.classIcons[colIndex].texture:SetVertexColor(1, 1, 1, 1.0)
+                        end
                     end
                     
                     if importantBuffs[texture] then
@@ -416,7 +424,8 @@ local function AnnounceMissing()
         ["Might"] = {},
         ["Kings"] = {},
         ["Wisdom"] = {},
-        ["Salvation"] = {}
+        ["Salvation"] = {},
+        ["Champion"] = {} -- Added bucket for consistency
     }
     
     for i = 1, GetNumRaidMembers() do
@@ -432,7 +441,7 @@ local function AnnounceMissing()
             local coloredName = string.format("|cff%02x%02x%02x%s|r", r*255, g*255, b*255, name)
             
             -- Check what they HAVE
-            local hasFort, hasMark, hasInt, hasSpirit, hasShadow, hasMight, hasKings, hasWisdom, hasSalv = false, false, false, false, false, false, false, false, false
+            local hasFort, hasMark, hasInt, hasSpirit, hasShadow, hasMight, hasKings, hasWisdom, hasSalv, hasChamp = false, false, false, false, false, false, false, false, false, false
             
             for b = 1, 32 do
                 local texture = UnitBuff(unit, b)
@@ -447,6 +456,7 @@ local function AnnounceMissing()
                 if classBuffTextures[texture] == 7 then hasKings = true end
                 if classBuffTextures[texture] == 8 then hasWisdom = true end
                 if classBuffTextures[texture] == 9 then hasSalv = true end
+                if classBuffTextures[texture] == 10 then hasChamp = true end
             end
             
             -- Check what they NEED
@@ -475,6 +485,9 @@ local function AnnounceMissing()
                 if not hasInt then table.insert(missingData["Intellect"], coloredName) end
                 if not hasSpirit then table.insert(missingData["Spirit"], coloredName) end
             end
+            
+            -- Note: 'Champion' is not currently announced as missing because class requirements are unknown.
+            -- To add it, add a check here like: if not hasChamp then ... end
         end
     end
     
