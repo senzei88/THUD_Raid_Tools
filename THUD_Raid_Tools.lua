@@ -641,3 +641,60 @@ SLASH_TRTA1 = "/trta"
 SlashCmdList["TRTA"] = function()
     AnnounceMissing()
 end
+
+-- --- CONSUME LOGGING LOGIC ---
+
+-- Initialize the global SavedVariable table if it doesn't exist
+THUD_ConsumeLog = THUD_ConsumeLog or {}
+
+local function LogConsumesToFile()
+    if GetNumRaidMembers() == 0 then
+        DEFAULT_CHAT_FRAME:AddMessage("THUD Raid Tools: Not in a raid. Cannot log consumes.")
+        return
+    end
+
+    -- Create a timestamp for this specific log entry
+    -- Note: date() requires the os library, which is available in 1.12
+    local timestamp = date("%Y-%m-%d %H:%M:%S")
+    
+    local currentLog = {
+        time = timestamp,
+        players = {}
+    }
+
+    for i = 1, GetNumRaidMembers() do
+        local unit = "raid"..i
+        local name = UnitName(unit)
+        
+        -- Only check connected players
+        if name and UnitIsConnected(unit) then
+            local playerConsumes = {}
+            
+            for b = 1, 32 do
+                local texture = UnitBuff(unit, b)
+                if not texture then break end
+                
+                -- If the buff matches our importantBuffs list, record its name
+                if importantBuffs[texture] then
+                    table.insert(playerConsumes, importantBuffs[texture].name)
+                end
+            end
+            
+            -- Save the player's list of consumes (even if empty, so you know who slacked)
+            currentLog.players[name] = playerConsumes
+        end
+    end
+
+    -- Insert this scan into the global log
+    table.insert(THUD_ConsumeLog, currentLog)
+    
+    DEFAULT_CHAT_FRAME:AddMessage("THUD Raid Tools: Consume log created for " .. timestamp .. ".")
+    DEFAULT_CHAT_FRAME:AddMessage("Type /reload or log out to save it to your WTF folder.")
+end
+
+-- Slash Command to trigger the log
+SLASH_TRTLOG1 = "/trtlog"
+SlashCmdList["TRTLOG"] = function()
+    LogConsumesToFile()
+end
+
