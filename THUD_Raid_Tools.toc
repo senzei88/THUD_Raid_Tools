@@ -3,5 +3,6 @@
 ## Notes: Inspired by Method Raid Tools, A Simple Turtle Wow Raid inpection and annoument Raid Addon
 ## Author: Erros&Senzei
 ## Version: Prerelase
+## SavedVariables: THUD_ConsumeLog
 
 THUD_Raid_Tools.lua
