@@ -176,9 +176,9 @@ function THUD.UpdateAutoSummonPanelAnchor()
     local recruitPanel = getglobal("THUD_RecruitPanel")
     autoSummonPanel:ClearAllPoints()
     if recruitPanel and recruitPanel:IsVisible() then
-        autoSummonPanel:SetPoint("TOP", recruitPanel, "BOTTOM", 0, -4)
+        autoSummonPanel:SetPoint("BOTTOM", recruitPanel, "TOP", 0, 4)
     else
-        autoSummonPanel:SetPoint("TOP", THUD_MainBar, "BOTTOM", 0, -4)
+        autoSummonPanel:SetPoint("BOTTOM", THUD_MainBar, "TOP", 0, 4)
     end
 end
 
@@ -187,7 +187,7 @@ function THUD.CreateAutoSummonPanel()
 
     local f = CreateFrame("Frame", "THUD_AutoSumPanel", UIParent)
     f:SetWidth(280); f:SetHeight(45)
-    f:SetPoint("TOP", THUD_MainBar, "BOTTOM", 0, -4)
+    f:SetPoint("BOTTOM", THUD_MainBar, "TOP", 0, 4)
     f:SetFrameStrata("HIGH")
     f:SetBackdrop({
         bgFile   = "Interface/Tooltips/UI-Tooltip-Background",
@@ -263,12 +263,7 @@ chatScanner:SetScript("OnEvent", function()
     local s    = THUD_Settings.autoSummon
     local text = string.lower(arg1)
 
-    local wantsSummon = string.find(text, "summon") or string.find(text, "summons")
-        or string.find(text, " summ") or string.find(text, "^summ")
-        or string.find(text, " sum ") or string.find(text, "^sum ")
-
-    if not wantsSummon then return end
-
+    -- Check 1: location keyword
     local matchedLabel = nil
     for _, key in ipairs(locationOrder) do
         if s[key] then
@@ -281,13 +276,155 @@ chatScanner:SetScript("OnEvent", function()
         end
         if matchedLabel then break end
     end
-
     if not matchedLabel then return end
+
+    -- Check 2: LF / WTB intent
+    local wantsService = string.find(text, "wtb") or string.find(text, "want to buy")
+        or string.find(text, " lf ") or string.find(text, "^lf ")
+        or string.find(text, "lf1") or string.find(text, "lf2") or string.find(text, "lf3")
+        or string.find(text, "lfs") or string.find(text, "looking for")
+    if not wantsService then return end
+
+    -- Check 3: summon keyword
+    local wantsSummon = string.find(text, "summon") or string.find(text, "summons")
+        or string.find(text, " summ") or string.find(text, "^summ")
+        or string.find(text, " sum ") or string.find(text, "^sum ")
+    if not wantsSummon then return end
 
     if InviteUnit then InviteUnit(arg2) else InviteByName(arg2) end
     SendChatMessage("Free summon to " .. matchedLabel .. "! No cost, tips appreciated!", "WHISPER", nil, arg2)
     DEFAULT_CHAT_FRAME:AddMessage("|cffcc88ffTHUD Auto Summon:|r Invited and whispered " .. arg2 .. " for " .. matchedLabel)
+    THUD.ShowSummonPopup(arg2, matchedLabel)
+    PlaySound("ReadyCheck")
 end)
+
+-- =============================================================================
+-- 6b. 123 PARTY/RAID SCANNER
+-- =============================================================================
+
+local readyScanner = CreateFrame("Frame")
+readyScanner:RegisterEvent("CHAT_MSG_SAY")
+readyScanner:RegisterEvent("CHAT_MSG_YELL")
+readyScanner:RegisterEvent("CHAT_MSG_PARTY")
+readyScanner:RegisterEvent("CHAT_MSG_RAID")
+readyScanner:RegisterEvent("CHAT_MSG_RAID_LEADER")
+
+local _, THUD_PlayerClass = UnitClass("player")
+
+readyScanner:SetScript("OnEvent", function()
+    if THUD_PlayerClass ~= "WARLOCK" then return end
+    if not arg1 or not arg2 then return end
+    if arg2 == UnitName("player") then return end
+
+    local text = string.gsub(arg1, "%s+", "")
+    if text ~= "123" then return end
+
+    -- Must be in our party or raid
+    local inGroup = false
+    local raidCount  = GetNumRaidMembers()
+    local partyCount = GetNumPartyMembers()
+    if raidCount > 0 then
+        for i = 1, raidCount do
+            local name = UnitName("raid"..i)
+            if name and name == arg2 then inGroup = true; break end
+        end
+    elseif partyCount > 0 then
+        for i = 1, partyCount do
+            local name = UnitName("party"..i)
+            if name and name == arg2 then inGroup = true; break end
+        end
+    end
+    if not inGroup then return end
+
+    SendChatMessage("Summons inc!", "WHISPER", nil, arg2)
+    DEFAULT_CHAT_FRAME:AddMessage("|cffcc88ffTHUD Auto Summon:|r " .. arg2 .. " typed 123 — summon popup opened.")
+    THUD.ShowSummonPopup(arg2, "your location")
+    PlaySound("ReadyCheck")
+end)
+
+-- =============================================================================
+-- 6c. SUMMON POPUP
+-- =============================================================================
+
+local summonPopup = nil
+
+function THUD.ShowSummonPopup(playerName, locationLabel)
+    if not summonPopup then
+        local f = CreateFrame("Frame", "THUD_SummonPopup", UIParent)
+        f:SetWidth(260); f:SetHeight(85)
+        f:SetPoint("TOP", UIParent, "TOP", 0, -150)
+        f:SetFrameStrata("DIALOG")
+        f:SetBackdrop({
+            bgFile   = "Interface/Tooltips/UI-Tooltip-Background",
+            edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+            edgeSize = 14, insets = {left=4, right=4, top=4, bottom=4}
+        })
+        f:SetBackdropColor(0, 0, 0.12, 0.95)
+        f:EnableMouse(true); f:SetMovable(true)
+        f:RegisterForDrag("LeftButton")
+        f:SetScript("OnDragStart", function() this:StartMoving() end)
+        f:SetScript("OnDragStop",  function() this:StopMovingOrSizing() end)
+
+        local label = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        label:SetPoint("TOP", 0, -14)
+        label:SetText("")
+        f.label = label
+
+        local sumBtn = CreateFrame("Button", "THUD_SummonPopupBtn", f, "UIPanelButtonTemplate")
+        sumBtn:SetWidth(100); sumBtn:SetHeight(25)
+        sumBtn:SetPoint("BOTTOMLEFT", 20, 12)
+        sumBtn:SetText("Summon")
+        sumBtn:SetScript("OnClick", function()
+            local pName = this.summonTarget
+            local pLoc  = this.summonLocation
+            if not pName or pName == "" then return end
+            TargetByName(pName)
+            CastSpellByName("Ritual of Summoning")
+            SendChatMessage("Summoning " .. pName .. " to " .. pLoc .. " now!", "PARTY")
+            SendChatMessage("On the way! Summoning you to " .. pLoc .. " now.", "WHISPER", nil, pName)
+            DEFAULT_CHAT_FRAME:AddMessage("|cffcc88ffTHUD Auto Summon:|r Summoning " .. pName .. " to " .. pLoc)
+            f:Hide()
+            local q = f.queue or {}
+            if table.getn(q) > 0 then
+                local nxt = table.remove(q, 1)
+                f.queue = q
+                THUD.ShowSummonPopup(nxt.name, nxt.loc)
+            end
+        end)
+        f.sumBtn = sumBtn
+
+        local dismissBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        dismissBtn:SetWidth(100); dismissBtn:SetHeight(25)
+        dismissBtn:SetPoint("BOTTOMRIGHT", -20, 12)
+        dismissBtn:SetText("Dismiss")
+        dismissBtn:SetScript("OnClick", function()
+            f:Hide()
+            local q = f.queue or {}
+            if table.getn(q) > 0 then
+                local nxt = table.remove(q, 1)
+                f.queue = q
+                THUD.ShowSummonPopup(nxt.name, nxt.loc)
+            end
+        end)
+
+        summonPopup = f
+    end
+
+    -- Queue if already visible with real data
+    if summonPopup:IsVisible() and summonPopup.sumBtn.summonTarget then
+        local q = summonPopup.queue or {}
+        table.insert(q, { name = playerName, loc = locationLabel })
+        summonPopup.queue = q
+        return
+    end
+
+    summonPopup.currentPlayer   = playerName
+    summonPopup.currentLocation = locationLabel
+    summonPopup.sumBtn.summonTarget   = playerName
+    summonPopup.sumBtn.summonLocation = locationLabel
+    summonPopup.label:SetText("|cffcc88ff" .. playerName .. "|r — summon to |cff00ff00" .. locationLabel .. "|r?")
+    summonPopup:Show()
+end
 
 -- =============================================================================
 -- 7. CONFIG WINDOW
