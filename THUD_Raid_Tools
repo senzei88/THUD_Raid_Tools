@@ -1,0 +1,10 @@
+## Interface: 11200
+## Title: THUD Raid Tools
+## SavedVariables: THUD_AutoInvite, THUD_Settings, THUD_ConsumeLog
+
+util.lua
+Utilities.lua
+THUD_Raid_Tools.lua
+AutoInvite.lua
+Recruitment.lua
+MainUI.lua
