@@ -9,3 +9,5 @@ the check flask button will check for flasks and announce in officer who is miss
 
 the announce buffs button will announce who is missing what class buffs in raid
 <img width="857" height="478" alt="image" src="https://github.com/user-attachments/assets/45e90605-7047-45c4-9d31-333efd8bda26" />
+
+/trtlog will now log consumes at time of command in a new imports folder
