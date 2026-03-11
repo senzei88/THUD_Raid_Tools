@@ -8,10 +8,12 @@ local NAME_WIDTH = 120 -- Widened slightly for Ready Icon
 
 -- Main Frame Setup
 local mainFrame = CreateFrame("Frame", "RaidInspectFrame", UIParent)
--- UPDATED WIDTH: (10 * COL_WIDTH)
 mainFrame:SetWidth(NAME_WIDTH + (10 * COL_WIDTH) + 200) 
-mainFrame:SetHeight(90 + (MAX_ROWS * ROW_HEIGHT)) 
+mainFrame:SetHeight(110 + (MAX_ROWS * ROW_HEIGHT)) -- Increased from 90 to 110 for padding
 mainFrame:SetPoint("CENTER", UIParent, "CENTER")
+mainFrame:SetScale(0.75)
+mainFrame:SetFrameStrata("DIALOG") 
+mainFrame:SetFrameLevel(100)
 mainFrame:SetBackdrop({
     bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
     edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -591,39 +593,91 @@ local function ReportMissingFlasks()
     end
 end
 
+-- --- CONSUME LOGGING LOGIC ---
+
+-- Initialize the global SavedVariable table if it doesn't exist
+THUD_ConsumeLog = THUD_ConsumeLog or {}
+
+local function LogConsumesToExport()
+    if GetNumRaidMembers() == 0 then
+        DEFAULT_CHAT_FRAME:AddMessage("|cffff0000THUD:|r Not in a raid. Cannot log consumes.")
+        return
+    end
+
+    -- 1. Create the Timestamp and Header
+    local timestamp = date("%Y-%m-%d_%H-%M-%S")
+    local fileContent = "THUD Raid Consume Log: " .. timestamp .. "\n"
+    fileContent = fileContent .. "------------------------------------------\n"
+    
+    -- 2. Scan Raid Members
+    for i = 1, GetNumRaidMembers() do
+        local unit = "raid"..i
+        local name = UnitName(unit)
+        
+        if name and UnitIsConnected(unit) then
+            local playerConsumes = ""
+            for b = 1, 32 do
+                local texture = UnitBuff(unit, b)
+                if not texture then break end
+                
+                -- Check against your importantBuffs list
+                if importantBuffs[texture] then
+                    playerConsumes = playerConsumes .. importantBuffs[texture].name .. ", "
+                end
+            end
+            
+            -- Format the line: PlayerName: Buff1, Buff2, 
+            fileContent = fileContent .. name .. ": " .. (playerConsumes ~= "" and playerConsumes or "No Consumes Found") .. "\n"
+        end
+    end
+
+    -- 3. Export via SuperWoW
+    if type(ExportFile) == "function" then
+        -- This creates C:\Games\TurtleWoW\Exports\Consumes_YYYY-MM-DD_HH-MM-SS.txt
+        local fileName = "Consumes_" .. timestamp
+        ExportFile(fileName, fileContent)
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00THUD:|r Exported log to Exports\\" .. fileName .. ".txt")
+    else
+        DEFAULT_CHAT_FRAME:AddMessage("|cffff0000THUD Error:|r SuperWoW ExportFile function not found.")
+    end
+
+    -- 4. Also save to SavedVariables as a backup
+    table.insert(THUD_ConsumeLog, {time = timestamp, data = fileContent})
+end
+
 -- --- BUTTONS ---
 
 -- 1. Refresh Button
 local refreshBtn = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
 refreshBtn:SetWidth(80)
 refreshBtn:SetHeight(22)
-refreshBtn:SetPoint("BOTTOMLEFT", mainFrame, "BOTTOMLEFT", 15, 10)
+refreshBtn:SetPoint("BOTTOMLEFT", mainFrame, "BOTTOMLEFT", 15, 15) -- Increased Y offset to 15
 refreshBtn:SetText("Refresh")
-refreshBtn:SetScript("OnClick", ScanRaid)
+refreshBtn:SetScript("OnClick", function() ScanRaid() end)
 
--- 2. Ready Check Button
-local readyBtn = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
-readyBtn:SetWidth(90)
-readyBtn:SetHeight(22)
-readyBtn:SetPoint("LEFT", refreshBtn, "RIGHT", 5, 0)
-readyBtn:SetText("Ready Check")
-readyBtn:SetScript("OnClick", function() DoReadyCheck() end)
+-- 2. Log Consumes Button
+local logBtn = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
+logBtn:SetWidth(105)
+logBtn:SetHeight(22)
+logBtn:SetPoint("LEFT", refreshBtn, "RIGHT", 5, 0)
+logBtn:SetText("Log Consumes")
+logBtn:SetScript("OnClick", function() LogConsumesToExport() end)
 
--- 3. Check Flasks (Officer) Button
+-- 3. Check Flasks (Officer) Button (MOVED TO BOTTOM ROW)
 local flaskBtn = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
-flaskBtn:SetWidth(100)
+flaskBtn:SetWidth(110)
 flaskBtn:SetHeight(22)
-flaskBtn:SetPoint("BOTTOMRIGHT", mainFrame, "BOTTOMRIGHT", -15, 35) -- Stacked above announce
+flaskBtn:SetPoint("BOTTOMRIGHT", mainFrame, "BOTTOMRIGHT", -125, 15) -- Positioned left of Announce
 flaskBtn:SetText("Check Flasks (O)")
-flaskBtn:SetScript("OnClick", ReportMissingFlasks)
+flaskBtn:SetScript("OnClick", function() ReportMissingFlasks() end)
 
 -- 4. Announce Missing Button
 local announceBtn = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
-announceBtn:SetWidth(100)
+announceBtn:SetWidth(110)
 announceBtn:SetHeight(22)
-announceBtn:SetPoint("BOTTOMRIGHT", mainFrame, "BOTTOMRIGHT", -15, 10)
+announceBtn:SetPoint("BOTTOMRIGHT", mainFrame, "BOTTOMRIGHT", -10, 15) -- Increased Y offset to 15
 announceBtn:SetText("Announce Buffs")
-announceBtn:SetScript("OnClick", AnnounceMissing)
+announceBtn:SetScript("OnClick", function() AnnounceMissing() end)
 
 -- Initialize
 CreateRows()
@@ -642,59 +696,10 @@ SlashCmdList["TRTA"] = function()
     AnnounceMissing()
 end
 
--- --- CONSUME LOGGING LOGIC ---
 
--- Initialize the global SavedVariable table if it doesn't exist
-THUD_ConsumeLog = THUD_ConsumeLog or {}
 
-local function LogConsumesToFile()
-    if GetNumRaidMembers() == 0 then
-        DEFAULT_CHAT_FRAME:AddMessage("THUD Raid Tools: Not in a raid. Cannot log consumes.")
-        return
-    end
-
-    -- Create a timestamp for this specific log entry
-    -- Note: date() requires the os library, which is available in 1.12
-    local timestamp = date("%Y-%m-%d %H:%M:%S")
-    
-    local currentLog = {
-        time = timestamp,
-        players = {}
-    }
-
-    for i = 1, GetNumRaidMembers() do
-        local unit = "raid"..i
-        local name = UnitName(unit)
-        
-        -- Only check connected players
-        if name and UnitIsConnected(unit) then
-            local playerConsumes = {}
-            
-            for b = 1, 32 do
-                local texture = UnitBuff(unit, b)
-                if not texture then break end
-                
-                -- If the buff matches our importantBuffs list, record its name
-                if importantBuffs[texture] then
-                    table.insert(playerConsumes, importantBuffs[texture].name)
-                end
-            end
-            
-            -- Save the player's list of consumes (even if empty, so you know who slacked)
-            currentLog.players[name] = playerConsumes
-        end
-    end
-
-    -- Insert this scan into the global log
-    table.insert(THUD_ConsumeLog, currentLog)
-    
-    DEFAULT_CHAT_FRAME:AddMessage("THUD Raid Tools: Consume log created for " .. timestamp .. ".")
-    DEFAULT_CHAT_FRAME:AddMessage("Type /reload or log out to save it to your WTF folder.")
-end
-
--- Slash Command to trigger the log
+-- Update Slash Command to trigger the new Export logic
 SLASH_TRTLOG1 = "/trtlog"
 SlashCmdList["TRTLOG"] = function()
-    LogConsumesToFile()
+    LogConsumesToExport()
 end
-
