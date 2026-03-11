@@ -17,7 +17,7 @@ AutoSummon_Settings = {
     ["ubrs"]             = false,
     ["winterspring"]     = false,
     ["silithus"]         = false,
-    ["autoPostMsg"]      = "FREE summons active! PST for an invite!",
+    ["autoPostMsg"]      = "Unzip, thud... Welcome to Mount Hyjal! 🏔️ Senzei Summon Airlines is now boarding. PST for a summon! Tips are never required but greatly appreciated—help us keep the Succubus fed!",
     ["autoPostInterval"] = 60,       -- seconds
     ["selectedChannel"]  = "world",  -- general / trade / world / raid
 }
