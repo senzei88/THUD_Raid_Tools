@@ -1,5 +1,5 @@
 # THUD Raid Tools
-Thud Raid Tools for Turtle WoW. Tracks all standard and custom Turtle WoW consumables. Features an easy-to-use GUI for raid leaders to verify buffs instantly. Coded by Senzei and Erros. Inspired by Method Raid Tools.
+Thud Raid Tools for Turtle WoW. Tracks all standard and custom Turtle WoW consumables. Features an easy-to-use GUI for raid leaders to verify buffs instantly. Coded by Senzei and Erros. Inspired by Method Raid Tools and OG-Raid Helper.
 # THUD Raid Tools
 
 A World of Warcraft 1.12 (Vanilla / Turtle WoW) addon designed for raid leaders and Warlocks to streamline recruitment, consumable tracking, ready checks, auto-inviting, and summoning — all from a single compact UI bar.
