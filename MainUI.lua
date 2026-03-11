@@ -2,7 +2,7 @@
 -- THUD Main UI
 -- Layout: Header + 2 rows of buttons
 --   Row 1: GR | Rdy | Consume
---   Row 2: Auto Inv | Auto Sum
+--   Row 2: Auto Inv | Chronicle | Auto Sum
 -- =============================================================================
 
 local BTN_H    = 22
@@ -89,17 +89,31 @@ con:SetWidth(ROW1_BTN_W); con:SetHeight(BTN_H)
 con:SetPoint("LEFT", rdy, "RIGHT", 5, 0)
 THUD_Style(con, "Consume")
 
--- Row 2: Auto Inv | Auto Sum
-local ROW2_BTN_W = 115
+-- Row 2: Auto Inv | Chronicle | Auto Sum
+local ROW2_BTN_W = 73
 
 local ai = CreateFrame("Button", "THUD_AIBtn", Main)
 ai:SetWidth(ROW2_BTN_W); ai:SetHeight(BTN_H)
 ai:SetPoint("TOPLEFT", Main, "TOPLEFT", SIDE_PAD, row2TopY)
 THUD_Style(ai, "Auto Inv")
 
+local ch = CreateFrame("Button", "THUD_CHBtn", Main)
+ch:SetWidth(ROW2_BTN_W); ch:SetHeight(BTN_H)
+ch:SetPoint("LEFT", ai, "RIGHT", 5, 0)
+THUD_Style(ch, "Chronicle")
+ch:SetScript("OnClick", function()
+    if SlashCmdList["CHRONICLE"] then
+        SlashCmdList["CHRONICLE"]("config")
+    elseif SlashCmdList["Chronicle"] then
+        SlashCmdList["Chronicle"]("config")
+    else
+        DEFAULT_CHAT_FRAME:AddMessage("|cffcc88ffTHUD:|r Chronicle addon not loaded.")
+    end
+end)
+
 local as = CreateFrame("Button", "THUD_ASBtn", Main)
 as:SetWidth(ROW2_BTN_W); as:SetHeight(BTN_H)
-as:SetPoint("LEFT", ai, "RIGHT", 5, 0)
+as:SetPoint("LEFT", ch, "RIGHT", 5, 0)
 THUD_Style(as, "Auto Sum")
 
 -- -------------------------------------------------------
