@@ -7,4 +7,5 @@ Utilities.lua
 THUD_Raid_Tools.lua
 AutoInvite.lua
 Recruitment.lua
+AutoSummon.lua
 MainUI.lua
