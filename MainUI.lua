@@ -291,7 +291,8 @@ pollEventFrame:SetScript("OnEvent", function()
 
     local poll = THUD_ActivePoll
     local def  = THUD_COOLDOWNS[poll.key]
-    local playerName = string.match(sender, "^([^-]+)") or sender
+    local _, _, playerName = string.find(sender, "^([^-]+)")
+    playerName = playerName or sender
 
     -- Only accept from relevant class
     for i = 1, GetNumRaidMembers() do
@@ -328,7 +329,8 @@ castEventFrame:SetScript("OnEvent", function()
         if string.find(msg, "You cast " .. spellName) then
             caster = UnitName("player")
         else
-            caster = string.match(msg, "^(.+) casts " .. spellName)
+            local _, _, cap = string.find(msg, "^(.+) casts " .. spellName)
+            caster = cap
         end
         if caster then
             THUD_CDState[key].casts[caster] = GetTime()
