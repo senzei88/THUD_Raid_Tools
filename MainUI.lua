@@ -123,21 +123,12 @@ as:SetWidth(ROW2_BTN_W); as:SetHeight(BTN_H)
 as:SetPoint("LEFT", ch, "RIGHT", BTN_GAP, 0)
 THUD_Style(as, "Auto Sum")
 
--- Row 3: Rebirth Readiness | AOE Taunt Readiness (icon indicators)
--- Left-click  → announce current state to raid
--- Right-click → start readiness poll (OOC only, admin/officer gated)
--- Icon tint: green = all ready, yellow = some ready, red = none, gray = no data
--- -------------------------------------------------------
-
--- Helpers
-local function THUD_GetRDState(indicatorKey)
-    if OGRH and OGRH.ReadynessDashboard then
-        return OGRH.ReadynessDashboard.State
-            and OGRH.ReadynessDashboard.State.indicators
-            and OGRH.ReadynessDashboard.State.indicators[indicatorKey]
-    end
-    return nil
-end
+-- =============================================================================
+-- ROW 3: Cooldown readiness icons + raid health/mana bars
+-- Self-contained — no OGRH dependency
+-- Icons: Rebirth | AOE Taunt | Innervate   then   [H bar] / [M bar]
+-- Left-click: announce to raid   Right-click: start + poll
+-- =============================================================================
 
 local STATUS_TINTS = {
     green  = {0.0, 1.0, 0.0},
@@ -154,27 +145,227 @@ local function THUD_FormatTime(seconds)
     return string.format("%ds", secs)
 end
 
-local function THUD_ShowCooldownTooltip(frame, title, indicatorKey)
+-- -------------------------------------------------------
+-- Self-contained cooldown tracker
+-- -------------------------------------------------------
+-- Spell definitions: which classes have it, cooldown duration, spell name for /rw
+local THUD_COOLDOWNS = {
+    rebirth = {
+        label    = "Rebirth",
+        classes  = { DRUID = true },
+        duration = 1800,  -- 30 min
+        rwMsg    = "Druids: type + in raid if your Rebirth is ready",
+        icon     = "Interface\\Icons\\Spell_Nature_Reincarnation",
+    },
+    taunt = {
+        label    = "AOE Taunt",
+        classes  = { WARRIOR = true, DRUID = true },
+        duration = 600,   -- 10 min
+        rwMsg    = "Warriors/Druids: type + in raid if your AOE Taunt is ready",
+        icon     = "Interface\\Icons\\Ability_BullRush",
+    },
+    innervate = {
+        label    = "Innervate",
+        classes  = { DRUID = true },
+        duration = 360,   -- 6 min
+        rwMsg    = "Druids: type + in raid if your Innervate is ready",
+        icon     = "Interface\\Icons\\Spell_Nature_Lightning",
+    },
+}
+
+-- State per ability: { casts={[name]=timestamp}, ready={[name]=true}, total=N }
+local THUD_CDState = {}
+for key, _ in pairs(THUD_COOLDOWNS) do
+    THUD_CDState[key] = { casts = {}, ready = {}, total = 0 }
+end
+
+-- Active poll: only one at a time
+local THUD_ActivePoll = nil  -- { key, respondents={}, total, timer }
+local THUD_POLL_TIMEOUT = 15
+
+-- Count relevant raid members for an ability
+local function THUD_CountRelevant(key)
+    local def = THUD_COOLDOWNS[key]
+    if not def then return 0 end
+    local count = 0
+    for i = 1, GetNumRaidMembers() do
+        local name, _, _, _, class = GetRaidRosterInfo(i)
+        if name and class and def.classes[string.upper(class)] then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+-- Rebuild availability from cast timestamps + reported ready
+local function THUD_RebuildStatus(key)
+    local def = THUD_COOLDOWNS[key]
+    local state = THUD_CDState[key]
+    local now = GetTime()
+    local available, onCooldown = {}, {}
+    local total = 0
+
+    for i = 1, GetNumRaidMembers() do
+        local name, _, _, _, class = GetRaidRosterInfo(i)
+        if name and class and def.classes[string.upper(class)] then
+            total = total + 1
+            local cast = state.casts[name]
+            if cast then
+                local remaining = def.duration - (now - cast)
+                if remaining > 0 then
+                    table.insert(onCooldown, { name = name, remaining = remaining })
+                else
+                    table.insert(available, name)
+                end
+            elseif state.ready[name] then
+                table.insert(available, name)
+            else
+                table.insert(available, name)  -- assume ready if no data
+            end
+        end
+    end
+
+    state.total     = total
+    state.available = available
+    state.onCooldown = onCooldown
+
+    local readyCount = table.getn(available)
+    if total == 0 then
+        state.status = "gray"
+    elseif readyCount == total then
+        state.status = "green"
+    elseif readyCount > 0 then
+        state.status = "yellow"
+    else
+        state.status = "red"
+    end
+end
+
+-- Announce current state to raid chat
+local function THUD_AnnounceCooldown(key)
+    local def   = THUD_COOLDOWNS[key]
+    local state = THUD_CDState[key]
+    if not state.available then return end
+    local readyCount = table.getn(state.available)
+    local total = state.total or 0
+    local names = table.concat(state.available, ", ")
+    local msg = string.format("[THUD] %s ready: %d/%d", def.label, readyCount, total)
+    if readyCount > 0 then msg = msg .. " — " .. names end
+    if IsRaidLeader() or IsRaidOfficer() then
+        SendChatMessage(msg, "RAID_WARNING")
+    elseif GetNumRaidMembers() > 0 then
+        SendChatMessage(msg, "RAID")
+    else
+        DEFAULT_CHAT_FRAME:AddMessage("|cffaaddff" .. msg .. "|r")
+    end
+end
+
+-- Start a + poll for an ability
+local function THUD_StartPoll(key)
+    if THUD_ActivePoll then
+        DEFAULT_CHAT_FRAME:AddMessage("|cffcc88ffTHUD:|r A poll is already running.")
+        return
+    end
+    local def = THUD_COOLDOWNS[key]
+    local total = THUD_CountRelevant(key)
+    if total == 0 then
+        DEFAULT_CHAT_FRAME:AddMessage("|cffcc88ffTHUD:|r No " .. def.label .. " classes in raid.")
+        return
+    end
+    -- Clear old ready state for this ability
+    THUD_CDState[key].ready = {}
+    THUD_ActivePoll = { key = key, respondents = {}, total = total, startTime = GetTime() }
+    local rwMsg = "[THUD] " .. def.rwMsg
+    if IsRaidLeader() or IsRaidOfficer() then
+        SendChatMessage(rwMsg, "RAID_WARNING")
+    elseif GetNumRaidMembers() > 0 then
+        SendChatMessage(rwMsg, "RAID")
+    else
+        DEFAULT_CHAT_FRAME:AddMessage("|cffaaddff" .. rwMsg .. "|r")
+    end
+end
+
+-- Poll listener: CHAT_MSG_RAID / CHAT_MSG_RAID_LEADER
+local pollEventFrame = CreateFrame("Frame")
+pollEventFrame:RegisterEvent("CHAT_MSG_RAID")
+pollEventFrame:RegisterEvent("CHAT_MSG_RAID_LEADER")
+pollEventFrame:SetScript("OnEvent", function()
+    if not THUD_ActivePoll then return end
+    local text, sender = arg1, arg2
+    if not text or not sender then return end
+    if not string.find(text, "%+") then return end
+
+    local poll = THUD_ActivePoll
+    local def  = THUD_COOLDOWNS[poll.key]
+    local playerName = string.match(sender, "^([^-]+)") or sender
+
+    -- Only accept from relevant class
+    for i = 1, GetNumRaidMembers() do
+        local name, _, _, _, class = GetRaidRosterInfo(i)
+        if name == playerName and def.classes[string.upper(class or "")] then
+            if not poll.respondents[playerName] then
+                poll.respondents[playerName] = true
+                THUD_CDState[poll.key].ready[playerName] = true
+                THUD_CDState[poll.key].casts[playerName] = nil  -- clear any cooldown
+            end
+            break
+        end
+    end
+end)
+
+-- Combat log: track actual casts to put people on cooldown
+local castEventFrame = CreateFrame("Frame")
+castEventFrame:RegisterEvent("CHAT_MSG_SPELL_SELF_BUFF")
+castEventFrame:RegisterEvent("CHAT_MSG_SPELL_PARTY_BUFF")
+castEventFrame:RegisterEvent("CHAT_MSG_SPELL_FRIENDLYPLAYER_BUFF")
+castEventFrame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS")
+local SPELL_TO_KEY = {
+    ["Rebirth"]          = "rebirth",
+    ["Challenging Shout"]= "taunt",
+    ["Challenging Roar"] = "taunt",
+    ["Innervate"]        = "innervate",
+}
+castEventFrame:SetScript("OnEvent", function()
+    local msg = arg1
+    if not msg then return end
+    for spellName, key in pairs(SPELL_TO_KEY) do
+        -- "PlayerName casts SpellName" or "You cast SpellName"
+        local caster
+        if string.find(msg, "You cast " .. spellName) then
+            caster = UnitName("player")
+        else
+            caster = string.match(msg, "^(.+) casts " .. spellName)
+        end
+        if caster then
+            THUD_CDState[key].casts[caster] = GetTime()
+            THUD_CDState[key].ready[caster] = nil
+            break
+        end
+    end
+end)
+
+-- -------------------------------------------------------
+-- Tooltip helper
+-- -------------------------------------------------------
+local function THUD_ShowCooldownTooltip(frame, key)
+    local def   = THUD_COOLDOWNS[key]
+    local state = THUD_CDState[key]
     GameTooltip:SetOwner(frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:SetText(title, 1, 1, 1)
-    local state = THUD_GetRDState(indicatorKey)
-    if state then
-        GameTooltip:AddLine(string.format("Available: %d / %d", state.ready or 0, state.total or 0), 1, 1, 1)
-        if state.available and table.getn(state.available) > 0 then
-            GameTooltip:AddLine("Ready:", 0.0, 1.0, 0.0)
-            for _, name in ipairs(state.available) do
-                GameTooltip:AddLine("  " .. name, 0.5, 1.0, 0.5)
-            end
+    GameTooltip:SetText(def.label .. " Readiness", 1, 1, 1)
+    local readyCount = state.available and table.getn(state.available) or 0
+    GameTooltip:AddLine(string.format("Available: %d / %d", readyCount, state.total or 0), 1, 1, 1)
+    if state.available and table.getn(state.available) > 0 then
+        GameTooltip:AddLine("Ready:", 0.0, 1.0, 0.0)
+        for _, name in ipairs(state.available) do
+            GameTooltip:AddLine("  " .. name, 0.5, 1.0, 0.5)
         end
-        if state.onCooldown and table.getn(state.onCooldown) > 0 then
-            GameTooltip:AddLine("On Cooldown:", 1.0, 0.5, 0.0)
-            for _, entry in ipairs(state.onCooldown) do
-                GameTooltip:AddLine(string.format("  %s: %s", entry.name, THUD_FormatTime(entry.remaining or 0)), 1.0, 0.7, 0.3)
-            end
+    end
+    if state.onCooldown and table.getn(state.onCooldown) > 0 then
+        GameTooltip:AddLine("On Cooldown:", 1.0, 0.5, 0.0)
+        for _, entry in ipairs(state.onCooldown) do
+            GameTooltip:AddLine(string.format("  %s: %s", entry.name, THUD_FormatTime(entry.remaining)), 1.0, 0.7, 0.3)
         end
-    else
-        GameTooltip:AddLine("(ReadynessDashboard not loaded)", 0.5, 0.5, 0.5)
     end
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("Left-click: Announce to raid", 0.5, 0.5, 0.5)
@@ -182,106 +373,92 @@ local function THUD_ShowCooldownTooltip(frame, title, indicatorKey)
     GameTooltip:Show()
 end
 
+-- -------------------------------------------------------
 -- Icon button factory
-local ICON_SIZE = BTN_H  -- square, matches row button height
-local function THUD_CreateCooldownIcon(parent, name, iconPath, indicatorKey, title)
+-- -------------------------------------------------------
+local ICON_SIZE = BTN_H
+local function THUD_CreateCooldownIcon(parent, name, key)
+    local def = THUD_COOLDOWNS[key]
     local btn = CreateFrame("Button", name, parent)
     btn:SetWidth(ICON_SIZE)
     btn:SetHeight(ICON_SIZE)
     btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-
-    -- Slim dark backdrop so it doesn't look naked
     btn:SetBackdrop({
         bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
         edgeFile = "Interface\\Buttons\\UI-SliderBar-Border",
-        edgeSize = 4,
-        insets   = {left=1, right=1, top=1, bottom=1}
+        edgeSize = 4, insets = {left=1, right=1, top=1, bottom=1}
     })
     btn:SetBackdropColor(0, 0, 0, 0.6)
     btn:SetBackdropBorderColor(0.4, 0.4, 0.4, 0.8)
-
-    -- Spell icon
     local icon = btn:CreateTexture(nil, "ARTWORK")
-    icon:SetWidth(ICON_SIZE - 4)
-    icon:SetHeight(ICON_SIZE - 4)
+    icon:SetWidth(ICON_SIZE - 4); icon:SetHeight(ICON_SIZE - 4)
     icon:SetPoint("CENTER", btn, "CENTER", 0, 0)
-    icon:SetTexture(iconPath)
+    icon:SetTexture(def.icon)
     icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    icon:SetVertexColor(0.5, 0.5, 0.5, 1)  -- start gray (no data)
+    icon:SetVertexColor(0.5, 0.5, 0.5, 1)
     btn.icon = icon
-
     btn:SetScript("OnClick", function()
-        local click = arg1 or "LeftButton"
-        if OGRH and OGRH.ReadynessDashboard and OGRH.ReadynessDashboard.OnIndicatorClick then
-            OGRH.ReadynessDashboard.OnIndicatorClick(indicatorKey, click)
+        if arg1 == "LeftButton" then
+            THUD_AnnounceCooldown(key)
         else
-            DEFAULT_CHAT_FRAME:AddMessage("|cffcc88ffTHUD:|r ReadynessDashboard not loaded.")
+            THUD_StartPoll(key)
         end
     end)
-    btn:SetScript("OnEnter", function()
-        THUD_ShowCooldownTooltip(this, title .. " Readiness", indicatorKey)
-    end)
+    btn:SetScript("OnEnter", function() THUD_ShowCooldownTooltip(this, key) end)
     btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
     return btn
 end
 
-local rbtn = THUD_CreateCooldownIcon(Main, "THUD_RebirthBtn",
-    "Interface\\Icons\\Spell_Nature_Reincarnation",
-    "rebirth", "Rebirth")
+-- Place the three icons
+local rbtn = THUD_CreateCooldownIcon(Main, "THUD_RebirthBtn",  "rebirth")
 rbtn:SetPoint("TOPLEFT", Main, "TOPLEFT", SIDE_PAD, row3TopY)
 
-local tbtn = THUD_CreateCooldownIcon(Main, "THUD_TauntBtn",
-    "Interface\\Icons\\Ability_BullRush",
-    "taunt", "AOE Taunt")
+local tbtn = THUD_CreateCooldownIcon(Main, "THUD_TauntBtn",    "taunt")
 tbtn:SetPoint("LEFT", rbtn, "RIGHT", BTN_GAP, 0)
 
--- Raid-wide health + mana bars filling remaining row 3 width
--- Space = FRAME_W - SIDE_PAD - ICON_SIZE - BTN_GAP - ICON_SIZE - BTN_GAP - BTN_GAP - SIDE_PAD
-local RAID_BAR_W = FRAME_W - SIDE_PAD - ICON_SIZE - BTN_GAP - ICON_SIZE - BTN_GAP - BTN_GAP - SIDE_PAD
-local RAID_BAR_H = math.floor((ICON_SIZE - 2) / 2)  -- two bars fill icon height with 2px gap
+local ibtn = THUD_CreateCooldownIcon(Main, "THUD_InnervateBtn", "innervate")
+ibtn:SetPoint("LEFT", tbtn, "RIGHT", BTN_GAP, 0)
+
+-- -------------------------------------------------------
+-- Raid health + mana bars (fill remaining width)
+-- 3 icons + 4 gaps (left pad, 2 between icons, right pad) = 3*16 + 2*2 + 5 + 5 = 62
+-- Remaining = 210 - 62 - 2(gap after last icon) = 146
+-- -------------------------------------------------------
+local RAID_BAR_W = FRAME_W - SIDE_PAD - (ICON_SIZE * 3) - (BTN_GAP * 2) - BTN_GAP - SIDE_PAD
+local RAID_BAR_H = math.floor((ICON_SIZE - 2) / 2)
 
 local raidBarsFrame = CreateFrame("Frame", "THUD_RaidBarsFrame", Main)
 raidBarsFrame:SetWidth(RAID_BAR_W)
 raidBarsFrame:SetHeight(ICON_SIZE)
-raidBarsFrame:SetPoint("LEFT", tbtn, "RIGHT", BTN_GAP, 0)
+raidBarsFrame:SetPoint("LEFT", ibtn, "RIGHT", BTN_GAP, 0)
 
 local hBar = CreateFrame("StatusBar", nil, raidBarsFrame)
-hBar:SetWidth(RAID_BAR_W)
-hBar:SetHeight(RAID_BAR_H)
+hBar:SetWidth(RAID_BAR_W); hBar:SetHeight(RAID_BAR_H)
 hBar:SetPoint("TOPLEFT", raidBarsFrame, "TOPLEFT", 0, 0)
 hBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
 hBar:SetStatusBarColor(0.0, 0.75, 0.1, 1)
-hBar:SetMinMaxValues(0, 100)
-hBar:SetValue(100)
+hBar:SetMinMaxValues(0, 100); hBar:SetValue(100)
 local hBg = hBar:CreateTexture(nil, "BACKGROUND")
-hBg:SetAllPoints(hBar)
-hBg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
+hBg:SetAllPoints(hBar); hBg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
 hBg:SetVertexColor(0.08, 0.08, 0.08, 0.9)
 local hTxt = hBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 hTxt:SetPoint("CENTER", hBar, "CENTER", 0, 0)
-hTxt:SetTextColor(1, 1, 1, 0.85)
-hTxt:SetText("H: --")
+hTxt:SetTextColor(1, 1, 1, 0.85); hTxt:SetText("H: --")
 
 local mBar = CreateFrame("StatusBar", nil, raidBarsFrame)
-mBar:SetWidth(RAID_BAR_W)
-mBar:SetHeight(RAID_BAR_H)
+mBar:SetWidth(RAID_BAR_W); mBar:SetHeight(RAID_BAR_H)
 mBar:SetPoint("BOTTOMLEFT", raidBarsFrame, "BOTTOMLEFT", 0, 0)
 mBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
 mBar:SetStatusBarColor(0.0, 0.4, 1.0, 1)
-mBar:SetMinMaxValues(0, 100)
-mBar:SetValue(100)
+mBar:SetMinMaxValues(0, 100); mBar:SetValue(100)
 local mBg = mBar:CreateTexture(nil, "BACKGROUND")
-mBg:SetAllPoints(mBar)
-mBg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
+mBg:SetAllPoints(mBar); mBg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
 mBg:SetVertexColor(0.08, 0.08, 0.08, 0.9)
 local mTxt = mBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 mTxt:SetPoint("CENTER", mBar, "CENTER", 0, 0)
-mTxt:SetTextColor(1, 1, 1, 0.85)
-mTxt:SetText("M: --")
+mTxt:SetTextColor(1, 1, 1, 0.85); mTxt:SetText("M: --")
 
--- Tooltip
 raidBarsFrame:EnableMouse(true)
 raidBarsFrame:SetScript("OnEnter", function()
     GameTooltip:SetOwner(this, "ANCHOR_TOP")
@@ -293,70 +470,65 @@ raidBarsFrame:SetScript("OnEnter", function()
 end)
 raidBarsFrame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
--- Scan raid-wide health + mana averages
+-- -------------------------------------------------------
+-- Scan functions
+-- -------------------------------------------------------
 local function THUD_ScanRaidResources()
     local numMembers = GetNumRaidMembers()
+    local hCur, hMax, mCur, mMax = 0, 0, 0, 0
+    local function scanUnit(unit)
+        if not UnitIsConnected(unit) or UnitIsDeadOrGhost(unit) then return end
+        local hp = UnitHealthMax(unit)
+        if hp > 0 then hCur = hCur + UnitHealth(unit); hMax = hMax + hp end
+        if UnitPowerType(unit) == 0 then
+            local mp = UnitManaMax(unit)
+            if mp > 0 then mCur = mCur + UnitMana(unit); mMax = mMax + mp end
+        end
+    end
     if numMembers == 0 then
-        -- Solo preview
-        local hMax = UnitHealthMax("player")
-        local hPct = hMax > 0 and math.floor(UnitHealth("player") / hMax * 100) or 100
-        hBar:SetValue(hPct)
-        hTxt:SetText("H: " .. hPct .. "%")
-        if UnitPowerType("player") == 0 then
-            local mMax = UnitManaMax("player")
-            local mPct = mMax > 0 and math.floor(UnitMana("player") / mMax * 100) or 100
-            mBar:SetValue(mPct)
-            mTxt:SetText("M: " .. mPct .. "%")
-        end
-        return
+        scanUnit("player")
+    else
+        for i = 1, numMembers do scanUnit("raid" .. i) end
     end
-
-    local hCur, hMax = 0, 0
-    local mCur, mMax = 0, 0
-    for i = 1, numMembers do
-        local unit = "raid" .. i
-        if UnitIsConnected(unit) and not UnitIsDeadOrGhost(unit) then
-            local hp = UnitHealthMax(unit)
-            if hp > 0 then
-                hCur = hCur + UnitHealth(unit)
-                hMax = hMax + hp
-            end
-            if UnitPowerType(unit) == 0 then
-                local mp = UnitManaMax(unit)
-                if mp > 0 then
-                    mCur = mCur + UnitMana(unit)
-                    mMax = mMax + mp
-                end
-            end
-        end
-    end
-
     local hPct = hMax > 0 and math.floor(hCur / hMax * 100) or 100
     local mPct = mMax > 0 and math.floor(mCur / mMax * 100) or 100
-
-    hBar:SetValue(hPct)
-    hTxt:SetText("H: " .. hPct .. "%")
-    mBar:SetValue(mPct)
-    mTxt:SetText("M: " .. mPct .. "%")
+    hBar:SetValue(hPct); hTxt:SetText("H: " .. hPct .. "%")
+    mBar:SetValue(mPct); mTxt:SetText("M: " .. mPct .. "%")
 end
 
--- OnUpdate: refresh icon tints + raid bars every ~0.5s
+-- -------------------------------------------------------
+-- OnUpdate: refresh everything every 0.5s
+-- -------------------------------------------------------
 local rdRefreshElapsed = 0
-local rdRefreshInterval = 0.5
 local rdRefreshFrame = CreateFrame("Frame")
 rdRefreshFrame:SetScript("OnUpdate", function()
     rdRefreshElapsed = rdRefreshElapsed + arg1
-    if rdRefreshElapsed < rdRefreshInterval then return end
+    if rdRefreshElapsed < 0.5 then return end
     rdRefreshElapsed = 0
+    if not THUD_MainBar or not THUD_MainBar:IsVisible() then return end
 
-    local function ApplyTint(btn, indicatorKey)
-        local state = THUD_GetRDState(indicatorKey)
-        local tint = STATUS_TINTS[(state and state.status) or "gray"]
+    -- Expire poll timeout
+    if THUD_ActivePoll then
+        if (GetTime() - THUD_ActivePoll.startTime) >= THUD_POLL_TIMEOUT then
+            THUD_ActivePoll = nil
+        end
+    end
+
+    -- Rebuild cooldown status and tint icons
+    for key, def in pairs(THUD_COOLDOWNS) do
+        THUD_RebuildStatus(key)
+    end
+    local tintBtn = {
+        { THUD_RebirthBtn,   "rebirth"   },
+        { THUD_TauntBtn,     "taunt"     },
+        { THUD_InnervateBtn, "innervate" },
+    }
+    for _, pair in ipairs(tintBtn) do
+        local btn, key = pair[1], pair[2]
+        local tint = STATUS_TINTS[THUD_CDState[key].status or "gray"]
         btn.icon:SetVertexColor(tint[1], tint[2], tint[3], 1)
     end
 
-    ApplyTint(THUD_RebirthBtn, "rebirth")
-    ApplyTint(THUD_TauntBtn,   "taunt")
     THUD_ScanRaidResources()
 end)
 
