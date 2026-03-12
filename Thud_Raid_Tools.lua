@@ -6,25 +6,7 @@ local ICON_SIZE = 16
 local COL_WIDTH = 20
 local NAME_WIDTH = 120 -- Widened slightly for Ready Icon
 
--- 1. Shared Styling Function
-local function THUD_Style(btn, label)
-    btn:SetBackdrop({
-        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", 
-        edgeFile = "Interface\\Buttons\\UI-SliderBar-Border", 
-        edgeSize = 8,
-        insets = { left = 2, right = 2, top = 2, bottom = 2 }
-    })
-    
-    btn:SetBackdropColor(0, 0.2, 0.4, 1) -- Navy Blue Fill
-    btn:SetBackdropBorderColor(0.7, 0.7, 0.7, 1) -- Silver Border
-    
-    -- Create the Silver Text Label
-    local t = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    t:SetPoint("CENTER", btn, "CENTER", 0, 0)
-    t:SetTextColor(0.8, 0.8, 0.8) -- Silver
-    t:SetText(label)
-    btn.text = t
-end
+-- THUD_Style is defined in Utilities.lua
 
 -- Main Frame Setup
 local mainFrame = CreateFrame("Frame", "RaidInspectFrame", UIParent)
@@ -86,8 +68,8 @@ local classBuffTextures = {
     ["Interface\\Icons\\Spell_Shadow_AntiShadow"] = 5,
     ["Interface\\Icons\\Spell_Holy_PrayerofShadowProtection"] = 5,
     ["Interface\\Icons\\Spell_Holy_FistOfJustice"] = 6,
-    ["Interface\\Icons\\Spell_Holy_GreaterBlessingofKings"] = 6, 
-    ["Interface\\Icons\\Spell_Magic_MageArmor"] = 7, 
+    ["Interface\\Icons\\Spell_Holy_GreaterBlessingofKings"] = 7,
+    ["Interface\\Icons\\Spell_Magic_MageArmor"] = 7,
     ["Interface\\Icons\\Spell_Magic_GreaterBlessingofKings"] = 7,
     ["Interface\\Icons\\Spell_Holy_SealOfWisdom"] = 8,
     ["Interface\\Icons\\Spell_Holy_GreaterBlessingofWisdom"] = 8,
@@ -435,6 +417,10 @@ local function AnnounceMissing()
         DEFAULT_CHAT_FRAME:AddMessage("Not in a raid.")
         return
     end
+    if not IsRaidLeader() and not IsRaidOfficer() then
+        DEFAULT_CHAT_FRAME:AddMessage("|cffcc88ffTHUD:|r Only raid leaders/officers can announce buffs.")
+        return
+    end
 
     -- 1. Scan and Collect Missing Buffs
     local missingData = {
@@ -487,8 +473,9 @@ local function AnnounceMissing()
             if not hasMark then table.insert(missingData["Mark"], coloredName) end
             if not hasShadow then table.insert(missingData["Shadow"], coloredName) end
             
-            -- Paladin Checks
+            -- Paladin Checks (everyone gets Kings and Salvation)
             if not hasKings then table.insert(missingData["Kings"], coloredName) end
+            if not hasSalv  then table.insert(missingData["Salvation"], coloredName) end
             
             -- Might: Melee/Hunters Only
             if NeedsMight(class) then
@@ -513,7 +500,7 @@ local function AnnounceMissing()
     end
     
     -- 2. Announce to Raid Chat
-    SendChatMessage("--- Unzip THUD Missing Class Buffs ---", "RAID")
+    SendChatMessage("[THUD] Missing Class Buffs:", "RAID")
     
     local function SendList(buffName, playerList)
         if table.getn(playerList) > 0 then
@@ -532,7 +519,7 @@ local function AnnounceMissing()
     SendList("Wisdom", missingData["Wisdom"])
     SendList("Salvation", missingData["Salvation"])
     
-    SendChatMessage("---Thank you for using Unzip THUD Raid Tools---", "RAID")
+    DEFAULT_CHAT_FRAME:AddMessage("|cffaaddffTHUD:|r Buff announcement complete.")
 end
 
 -- --- EVENT HANDLERS FOR READY CHECK ---
@@ -615,8 +602,8 @@ end
 
 -- --- CONSUME LOGGING LOGIC ---
 
--- Initialize the global SavedVariable table if it doesn't exist
-THUD_ConsumeLog = THUD_ConsumeLog or {}
+-- THUD_ConsumeLog is initialized in the VARIABLES_LOADED handler below
+-- (initializing here would overwrite the SavedVariable before WoW restores it)
 
 local function LogConsumesToExport()
     if GetNumRaidMembers() == 0 then
@@ -647,7 +634,9 @@ local function LogConsumesToExport()
             end
             
             -- Format the line: PlayerName: Buff1, Buff2, 
-            fileContent = fileContent .. name .. ": " .. (playerConsumes ~= "" and playerConsumes or "No Consumes Found") .. "\n"
+            -- Strip trailing ", " before writing
+            local cleanConsumes = string.gsub(playerConsumes, ", $", "")
+            fileContent = fileContent .. name .. ": " .. (cleanConsumes ~= "" and cleanConsumes or "No Consumes Found") .. "\n"
         end
     end
 
@@ -686,7 +675,7 @@ local flaskBtn = CreateFrame("Button", nil, mainFrame)
 flaskBtn:SetWidth(110); flaskBtn:SetHeight(22)
 flaskBtn:SetPoint("BOTTOMRIGHT", mainFrame, "BOTTOMRIGHT", -125, 15)
 THUD_Style(flaskBtn, "Check Flasks (O)")
-flaskBtn:SetScript("OnClick", function() ReportMissingFasks() end)
+flaskBtn:SetScript("OnClick", function() ReportMissingFlasks() end)
 
 -- 4. Announce Missing Button
 local announceBtn = CreateFrame("Button", nil, mainFrame)
@@ -713,6 +702,13 @@ SlashCmdList["TRTA"] = function()
 end
 
 
+
+-- Initialize SavedVariables safely after WoW restores them
+local consumeInitFrame = CreateFrame("Frame")
+consumeInitFrame:RegisterEvent("VARIABLES_LOADED")
+consumeInitFrame:SetScript("OnEvent", function()
+    if not THUD_ConsumeLog then THUD_ConsumeLog = {} end
+end)
 
 -- Update Slash Command to trigger the new Export logic
 SLASH_TRTLOG1 = "/trtlog"
