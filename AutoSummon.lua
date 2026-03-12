@@ -21,6 +21,8 @@ local function EnsureSettings()
             msg             = "FREE summons! PST for an invite to Mount Hyjal!",
             selectedChannel = "world",
             interval        = 5,
+            whisperPrefix   = "Free summon to ",
+            whisperSuffix   = "! No cost, tips appreciated!",
             hyjal           = false,
             epl             = false,
             azshara         = false,
@@ -33,6 +35,8 @@ local function EnsureSettings()
     if s.msg             == nil then s.msg             = "FREE summons! PST for an invite to Mount Hyjal!" end
     if s.selectedChannel == nil then s.selectedChannel = "world"  end
     if s.interval        == nil then s.interval        = 5        end
+    if s.whisperPrefix   == nil then s.whisperPrefix   = "Free summon to "              end
+    if s.whisperSuffix   == nil then s.whisperSuffix   = "! No cost, tips appreciated!" end
     if s.hyjal           == nil then s.hyjal           = false    end
     if s.epl             == nil then s.epl             = false    end
     if s.azshara         == nil then s.azshara         = false    end
@@ -292,7 +296,9 @@ chatScanner:SetScript("OnEvent", function()
     if not wantsSummon then return end
 
     if InviteUnit then InviteUnit(arg2) else InviteByName(arg2) end
-    SendChatMessage("Free summon to " .. matchedLabel .. "! No cost, tips appreciated!", "WHISPER", nil, arg2)
+    local prefix = s.whisperPrefix or "Free summon to "
+    local suffix = s.whisperSuffix or "! No cost, tips appreciated!"
+    SendChatMessage(prefix .. matchedLabel .. suffix, "WHISPER", nil, arg2)
     DEFAULT_CHAT_FRAME:AddMessage("|cffcc88ffTHUD Auto Summon:|r Invited and whispered " .. arg2 .. " for " .. matchedLabel)
     THUD.ShowSummonPopup(arg2, matchedLabel)
     PlaySound("ReadyCheck")
@@ -442,7 +448,7 @@ function THUD.ShowAutoSummonWindow()
     end
 
     local frame = CreateFrame("Frame", "THUD_AutoSummonFrame", UIParent)
-    frame:SetWidth(460); frame:SetHeight(420)
+    frame:SetWidth(460); frame:SetHeight(490)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     frame:SetFrameStrata("DIALOG")
     frame:EnableMouse(true); frame:SetMovable(true)
@@ -503,9 +509,59 @@ function THUD.ShowAutoSummonWindow()
     end)
     frame.msgBox = msgBox
 
+    -- Whisper message fields
+    local whisperLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    whisperLabel:SetPoint("TOPLEFT", 18, -138)
+    whisperLabel:SetText("Auto-Whisper Message:")
+
+    local whisperHint = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    whisperHint:SetPoint("TOPLEFT", 18, -154)
+    whisperHint:SetTextColor(0.6, 0.8, 1, 1)
+    whisperHint:SetText("[Before location]  <LOCATION>  [After location]")
+
+    local function MakeWhisperBox(xOff, width, settingKey)
+        local bg = CreateFrame("Frame", nil, frame)
+        bg:SetPoint("TOPLEFT", frame, "TOPLEFT", xOff, -170)
+        bg:SetWidth(width); bg:SetHeight(24)
+        bg:SetBackdrop({
+            bgFile   = "Interface/Tooltips/UI-Tooltip-Background",
+            edgeFile = "Interface/ChatFrame/ChatFrameBackground",
+            tile=true, tileSize=16, edgeSize=1,
+            insets={left=3,right=3,top=3,bottom=3}
+        })
+        bg:SetBackdropColor(0,0,0,0.7)
+        bg:SetBackdropBorderColor(0.4, 0.5, 0.7, 1)
+        local eb = CreateFrame("EditBox", nil, bg)
+        eb:SetPoint("TOPLEFT", 4, -3); eb:SetPoint("BOTTOMRIGHT", -4, 3)
+        eb:SetAutoFocus(false); eb:SetMaxLetters(120)
+        eb:SetFontObject(GameFontHighlightSmall)
+        eb:SetScript("OnEscapePressed", function() this:ClearFocus() end)
+        local captureKey = settingKey
+        eb:SetScript("OnEditFocusLost", function()
+            THUD_Settings.autoSummon[captureKey] = this:GetText()
+        end)
+        return eb
+    end
+
+    local prefixBox = MakeWhisperBox(18,  200, "whisperPrefix")
+    local suffixBox = MakeWhisperBox(242, 200, "whisperSuffix")
+
+    local prefixLbl = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    prefixLbl:SetPoint("TOPLEFT", 18, -197)
+    prefixLbl:SetTextColor(0.55, 0.55, 0.55, 1)
+    prefixLbl:SetText("Before location")
+
+    local suffixLbl = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    suffixLbl:SetPoint("TOPLEFT", 242, -197)
+    suffixLbl:SetTextColor(0.55, 0.55, 0.55, 1)
+    suffixLbl:SetText("After location")
+
+    frame.prefixBox = prefixBox
+    frame.suffixBox = suffixBox
+
     -- Channel radios
     local chLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    chLabel:SetPoint("TOPLEFT", 18, -138)
+    chLabel:SetPoint("TOPLEFT", 18, -212)
     chLabel:SetText("Advertise in:")
 
     local channels = {
@@ -518,7 +574,7 @@ function THUD.ShowAutoSummonWindow()
     for i, ch in ipairs(channels) do
         local radio = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
         radio:SetWidth(22); radio:SetHeight(22)
-        radio:SetPoint("TOPLEFT", 18 + (i-1)*90, -162)
+        radio:SetPoint("TOPLEFT", 18 + (i-1)*90, -236)
         radio:SetChecked(THUD_Settings.autoSummon.selectedChannel == ch.key)
 
         local lbl = radio:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -538,7 +594,7 @@ function THUD.ShowAutoSummonWindow()
 
     -- Interval
     local intLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    intLabel:SetPoint("TOPLEFT", 18, -202)
+    intLabel:SetPoint("TOPLEFT", 18, -276)
     intLabel:SetText("Interval (minutes):")
 
     local intBox = CreateFrame("EditBox", nil, frame)
@@ -563,7 +619,7 @@ function THUD.ShowAutoSummonWindow()
 
     -- Locations label
     local locLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    locLabel:SetPoint("TOPLEFT", 18, -236)
+    locLabel:SetPoint("TOPLEFT", 18, -310)
     locLabel:SetText("Locations to Scan For:")
 
     -- Location checkboxes 3-col grid
@@ -573,7 +629,7 @@ function THUD.ShowAutoSummonWindow()
         local row = math.floor((i-1) / 3)
         local col = math.mod((i-1), 3)
         local cb  = CreateFrame("CheckButton", "THUD_ASCB_"..key, frame, "UICheckButtonTemplate")
-        cb:SetPoint("TOPLEFT", frame, "TOPLEFT", 18 + col*145, -258 + row*(-28))
+        cb:SetPoint("TOPLEFT", frame, "TOPLEFT", 18 + col*145, -332 + row*(-28))
         getglobal(cb:GetName().."Text"):SetText(def.label)
         cb:SetChecked(THUD_Settings.autoSummon[key] and 1 or nil)
         cb.zoneKey = key
@@ -608,6 +664,8 @@ function THUD.RefreshAutoSummonWindow()
 
     summonFrame.msgBox:SetText(s.msg or "")
     summonFrame.intBox:SetText(tostring(s.interval or 5))
+    if summonFrame.prefixBox then summonFrame.prefixBox:SetText(s.whisperPrefix or "Free summon to ") end
+    if summonFrame.suffixBox then summonFrame.suffixBox:SetText(s.whisperSuffix or "! No cost, tips appreciated!") end
 
     for i, rb in ipairs(summonFrame.radioButtons) do
         rb:SetChecked(summonFrame.channels[i].key == s.selectedChannel)
