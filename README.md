@@ -276,7 +276,6 @@ Two stacked status bars on the right side of the bottom row display aggregate he
 
 - Settings are saved between sessions via the `THUD_Settings`, `THUD_AutoInvite`, `THUD_ConsumeLog`, and `THUD_MinimapDB` SavedVariables
 - The addon is built for the 1.12 Lua environment — it uses `string.gfind`, `math.mod`, `table.getn`, and `this` in event handlers as expected for that client version
-- Cooldown readiness icons do not depend on OG-Raid Helper or any other external addon
 
 ---
 
