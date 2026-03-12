@@ -96,3 +96,22 @@ function THUD.Trim(s)
     if not s then return "" end
     return (string.gsub(s, "^%s*(.-)%s*$", "%1"))
 end
+
+-- =============================================================================
+-- Shared UI style helper (used by Thud_Raid_Tools.lua and MainUI.lua)
+-- =============================================================================
+function THUD_Style(btn, label)
+    btn:SetBackdrop({
+        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Buttons\\UI-SliderBar-Border",
+        edgeSize = 8,
+        insets   = { left = 2, right = 2, top = 2, bottom = 2 }
+    })
+    btn:SetBackdropColor(0, 0.2, 0.4, 1)
+    btn:SetBackdropBorderColor(0.7, 0.7, 0.7, 1)
+    local t = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    t:SetPoint("CENTER", btn, "CENTER", 0, 0)
+    t:SetTextColor(0.8, 0.8, 0.8)
+    t:SetText(label)
+    btn.text = t
+end
