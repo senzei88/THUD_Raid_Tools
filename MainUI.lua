@@ -49,24 +49,8 @@ divider:SetTexture("Interface\\Buttons\\WHITE8X8")
 divider:SetVertexColor(0.4, 0.6, 0.9, 0.5)
 
 -- -------------------------------------------------------
--- Button style helper
+-- Button style helper: THUD_Style is defined in Utilities.lua
 -- -------------------------------------------------------
-local function THUD_Style(btn, label)
-    btn:SetBackdrop({
-        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
-        edgeFile = "Interface\\Buttons\\UI-SliderBar-Border",
-        edgeSize = 6,
-        insets   = {left=2, right=2, top=2, bottom=2}
-    })
-    btn:SetBackdropColor(0, 0.2, 0.4, 1)
-    btn:SetBackdropBorderColor(0.7, 0.7, 0.7, 1)
-
-    local t = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    t:SetPoint("CENTER", btn, "CENTER", 0, 0)
-    t:SetTextColor(0.8, 0.8, 0.8)
-    t:SetText(label)
-    btn.text = t
-end
 
 -- -------------------------------------------------------
 -- Rows
@@ -275,6 +259,16 @@ local function THUD_StartPoll(key)
     -- Clear old ready state for this ability
     THUD_CDState[key].ready = {}
     THUD_ActivePoll = { key = key, respondents = {}, total = total, startTime = GetTime() }
+
+    -- Pre-check: if the local player is an eligible class, mark them ready immediately
+    -- (the player's own CHAT_MSG_RAID won't fire for their own messages in 1.12)
+    local playerName = UnitName("player")
+    local _, playerClass = UnitClass("player")
+    if playerName and playerClass and def.classes[string.upper(playerClass or "")] then
+        THUD_CDState[key].ready[playerName] = true
+        THUD_CDState[key].casts[playerName] = nil
+        THUD_ActivePoll.respondents[playerName] = true
+    end
     local rwMsg = "[THUD] " .. def.rwMsg
     if IsRaidLeader() or IsRaidOfficer() then
         SendChatMessage(rwMsg, "RAID_WARNING")
@@ -636,6 +630,7 @@ end
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("ADDON_LOADED")
 loader:RegisterEvent("VARIABLES_LOADED")
+loader:RegisterEvent("PLAYER_LOGOUT")
 loader:SetScript("OnEvent", function()
 
     if event == "VARIABLES_LOADED" then
@@ -643,6 +638,33 @@ loader:SetScript("OnEvent", function()
             THUD_MinimapDB = { angle = MINIMAP_DEFAULT }
         end
         THUD_CreateMinimapButton()
+
+        -- Restore cooldown cast timestamps from SavedVariables
+        -- Discard any that have already expired
+        THUD_Settings = THUD_Settings or {}
+        if THUD_Settings.cdCasts then
+            local now = GetTime()
+            for key, casts in pairs(THUD_Settings.cdCasts) do
+                local def = THUD_COOLDOWNS[key]
+                if def and THUD_CDState[key] then
+                    for name, timestamp in pairs(casts) do
+                        local remaining = def.duration - (now - timestamp)
+                        if remaining > 0 then
+                            THUD_CDState[key].casts[name] = timestamp
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if event == "PLAYER_LOGOUT" then
+        -- Persist cooldown cast timestamps so they survive /reload
+        THUD_Settings = THUD_Settings or {}
+        THUD_Settings.cdCasts = {}
+        for key, state in pairs(THUD_CDState) do
+            THUD_Settings.cdCasts[key] = state.casts
+        end
     end
 
     if event == "ADDON_LOADED" and arg1 == "THUD_Raid_Tools" then
