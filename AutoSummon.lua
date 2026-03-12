@@ -50,9 +50,9 @@ local locationOrder = { "hyjal", "epl", "azshara", "ubrs", "winterspring", "sili
 local locationDefs = {
     hyjal        = { label = "Hyjal",        keywords = { "hyjal", "mount hyjal", "hj" } },
     epl          = { label = "EPL",          keywords = { "epl", "eastern plaguelands", "eastern plague" } },
-    azshara      = { label = "Azshara",      keywords = { "azshara", "azsh" } },
+    azshara      = { label = "Azshara",      keywords = { "azshara", "azsh", "duke"  } },
     ubrs         = { label = "UBRS",         keywords = { "ubrs", "upper blackrock", "upper br" } },
-    winterspring = { label = "Winterspring", keywords = { "winterspring", "wspring" } },
+    winterspring = { label = "Winterspring", keywords = { "winterspring", "wspring",  "ws" } },
     silithus     = { label = "Silithus",     keywords = { "silithus", "sili" } },
 }
 
