@@ -1,8 +1,8 @@
 # THUD Raid Tools
-Thud Raid Tools for Turtle WoW. Tracks all standard and custom Turtle WoW consumables. Features an easy-to-use GUI for raid leaders to verify buffs instantly. Coded by Senzei and Erros. Inspired by Method Raid Tools and OG-Raid Helper.
-# THUD Raid Tools
 
-A World of Warcraft 1.12 (Vanilla / Turtle WoW) addon designed for raid leaders and Warlocks to streamline recruitment, consumable tracking, ready checks, auto-inviting, and summoning — all from a single compact UI bar.
+Thud Raid Tools for Turtle WoW. Tracks all standard and custom Turtle WoW consumables. Features an easy-to-use GUI for raid leaders to verify buffs instantly. Coded by Senzei and Erros. Inspired by Method Raid Tools and OG-Raid Helper.
+
+A World of Warcraft 1.12 (Vanilla / Turtle WoW) addon designed for raid leaders and Warlocks to streamline recruitment, consumable tracking, ready checks, auto-inviting, summoning, and cooldown readiness — all from a single compact UI bar.
 
 ---
 
@@ -17,8 +17,11 @@ A World of Warcraft 1.12 (Vanilla / Turtle WoW) addon designed for raid leaders 
   - [Auto Invite](#auto-invite)
   - [Chronicle](#chronicle)
   - [Auto Summon](#auto-summon)
+  - [Cooldown Readiness Icons](#cooldown-readiness-icons)
+  - [Raid Health & Mana Bars](#raid-health--mana-bars)
 - [Slash Commands](#slash-commands)
 - [Requirements](#requirements)
+- [Notes](#notes)
 
 ---
 
@@ -35,19 +38,22 @@ A World of Warcraft 1.12 (Vanilla / Turtle WoW) addon designed for raid leaders 
 
 ## Main UI
 
-A small draggable bar appears on screen with buttons for all modules. It can be repositioned anywhere by left-click dragging.
+A small draggable bar appears on screen with buttons for all modules. It can be repositioned anywhere by left-click dragging. A minimap button (monkey icon) toggles the bar and can be dragged around the minimap edge. Its position is saved between sessions.
 
 ```
-┌────────────────────────────────────┐
-│           THUD Raid Tools          │
-├───────────┬──────┬─────────────────┤
-│ Guild Rec │  Rdy │    Consume      │
-├───────────┴──────┴─────────────────┤
-│  Auto Inv  │  Chronicle │  Auto Sum │
-└────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│                THUD Raid Tools               │
+├─────────────┬────────────┬───────────────────┤
+│ Guild Rec   │    Rdy     │     Consume       │
+├─────────────┼────────────┼───────────────────┤
+│  Auto Inv   │ Chronicle  │    Auto Sum       │
+├─────────────┴────────────┴───────────────────┤
+│ [Rebirth] [AOE Taunt] [Innervate] [H▓▓▓ 94%]│
+│                                   [M▓▓░ 78%]│
+└──────────────────────────────────────────────┘
 ```
 
-Progress bar panels for active modules (Recruitment, Auto Summon) anchor **above** the main bar with a countdown timer showing time until the next auto-post.
+Progress bar panels for active modules (Recruitment, Auto Summon) anchor above the main bar with a countdown timer showing time until the next auto-post.
 
 ---
 
@@ -82,7 +88,7 @@ A single button that instantly fires a standard WoW Ready Check on your raid.
 
 ### Consume Inspector
 
-A full raid buff and consumable inspection window. Scans all raid members and displays their active buffs in a grid.
+A full raid buff and consumable inspection window. Scans all raid members and displays their active buffs in a grid. Only raid leaders and officers can use the announce and flask check functions.
 
 **Features:**
 - Tracks 10 class buffs per player: Fortitude, Mark, Intellect, Spirit, Shadow Protection, Might, Kings, Wisdom, Salvation, Champion
@@ -92,7 +98,7 @@ A full raid buff and consumable inspection window. Scans all raid members and di
   - **Priority 3 — Elixirs & Alcohol:** Mongoose, Mageblood, Giants, Shadow Power, Firepower, and many more
   - **Priority 4 — World Buffs & Food:** Juju Might, Juju Power, Zanza, Rage of Ages, Well Fed, Scorpok, etc.
 - **Check Flasks** button — reports to officer chat who is missing a Priority 1 flask
-- **Announce Buffs** button — announces missing class buffs to raid chat by category
+- **Announce Buffs** button — announces missing class buffs to raid chat by category (raid leader/officer only)
 - **Log Consumes** button — exports a full consume log to a `.txt` file via SuperWoW's `ExportFile` (saved to `WoW/Exports/`)
 - Supports Ready Check integration — displays ready/not ready icons live during a ready check
 
@@ -112,7 +118,7 @@ Automatically invites players who whisper a configured keyword.
 
 **Features:**
 - Set one or more keywords separated by commas
-- Whisper matching is case-insensitive and exact
+- Whisper matching is case-insensitive and exact full-message match
 - Simple Start / Stop toggle
 - Settings persist between sessions
 
@@ -122,7 +128,6 @@ Automatically invites players who whisper a configured keyword.
 ```
 
 ---
-
 
 ### Chronicle
 
@@ -171,8 +176,6 @@ Always active regardless of whether auto-summon scanning is running. When any pl
 - Opens the summon popup immediately
 - Plays the ReadyCheck sound
 
-Useful for summoning raid members and friends to your current location without any location keywords needed.
-
 #### Summon Popup
 
 A small draggable popup that appears when a summon is triggered. Shows the player's name and destination.
@@ -203,10 +206,54 @@ Accessible via the **Auto Sum** button or slash command. Configure:
 
 ---
 
+### Cooldown Readiness Icons
+
+Three spell icons on the bottom row of the main bar track raid-wide cooldown availability for key abilities. No external addon required — fully self-contained.
+
+**Tracked Abilities:**
+
+| Icon | Ability | Classes | Cooldown |
+|------|---------|---------|----------|
+| ![Rebirth](https://wow.zamimg.com/images/wow/icons/tiny/spell_nature_reincarnation.gif) | Rebirth | Druid | 30 min |
+| ![AOE Taunt](https://wow.zamimg.com/images/wow/icons/tiny/ability_bullrush.gif) | AOE Taunt (Challenging Shout / Challenging Roar) | Warrior, Druid | 10 min |
+| ![Innervate](https://wow.zamimg.com/images/wow/icons/tiny/spell_nature_lightning.gif) | Innervate | Druid | 6 min |
+
+**Icon tint:**
+- 🟢 **Green** — all eligible members are ready
+- 🟡 **Yellow** — some are ready, some on cooldown
+- 🔴 **Red** — none are ready
+- ⚫ **Gray** — no eligible class members in raid / no data
+
+**Left-click** — announces current readiness to raid chat (or raid warning if you are leader/officer). Shows who is available and who is on cooldown with remaining time.
+
+**Right-click** — starts a readiness poll. Sends a `/rw` message asking eligible classes to type `+` in raid chat. Responses are collected for 15 seconds. Only one poll runs at a time.
+
+**Hover tooltip** — shows Available / Total count, list of ready players (green), and list of players on cooldown with remaining time (orange).
+
+**How cooldown tracking works:**
+- Actual spell casts (Rebirth, Challenging Shout, Challenging Roar, Innervate) are detected from the combat log and start the cooldown timer automatically
+- Players who respond `+` to a poll are marked ready and have their cooldown cleared
+- Cast timestamps persist through `/reload` — cooldowns already in progress are correctly restored
+
+---
+
+### Raid Health & Mana Bars
+
+Two stacked status bars on the right side of the bottom row display aggregate health and mana percentages across your entire raid in real time.
+
+- **Green bar** — raid-wide average health %
+- **Blue bar** — raid-wide average mana % (mana-using classes only)
+- Updates every 0.5 seconds
+- Hover to see exact percentages in a tooltip
+- Shows your own health/mana when not in a raid
+
+---
+
 ## Slash Commands Summary
 
 | Command | Module | Description |
 |---------|--------|-------------|
+| `/thudbar` | Main UI | Toggle main bar show/hide |
 | `/thudgr` | Guild Recruit | Open recruitment config |
 | `/TRT` or `/THUDinspect` | Consume Inspector | Open consume/buff inspector |
 | `/trta` | Consume Inspector | Announce missing buffs to raid |
@@ -221,13 +268,19 @@ Accessible via the **Auto Sum** button or slash command. Configure:
 - World of Warcraft 1.12.1 (Vanilla) or compatible private server (e.g. Turtle WoW)
 - **SuperWoW** — required only for the consume log export (`ExportFile` function). All other features work without it.
 - Auto Summon 123 scanner and summon casting require the player to be a **Warlock**
+- Announce Buffs and Check Flasks require raid leader or officer rank
 
 ---
 
 ## Notes
 
-- Settings are saved between sessions via the `THUD_Settings` and `THUD_AutoInvite` SavedVariables
+- Settings are saved between sessions via the `THUD_Settings`, `THUD_AutoInvite`, `THUD_ConsumeLog`, and `THUD_MinimapDB` SavedVariables
 - The addon is built for the 1.12 Lua environment — it uses `string.gfind`, `math.mod`, `table.getn`, and `this` in event handlers as expected for that client version
+- Cooldown readiness icons do not depend on OG-Raid Helper or any other external addon
+
+---
+
+## Screenshots
 
 Main Panel
 <img width="731" height="248" alt="image" src="https://github.com/user-attachments/assets/008c2643-ccb4-43c4-95ab-42f39c1ff6d3" />
@@ -235,51 +288,20 @@ Main Panel
 Guild Recruitment Panel
 <img width="1206" height="1278" alt="image" src="https://github.com/user-attachments/assets/6b3658b1-2f69-4a70-8aa1-f1ea3bdbfa22" />
 
-Consume panel
-Log consumes button will log consumes with date time stamp in \TurtleWoW\Imports folder path /trtlog will also accomplish this function
+Consume Panel — Log Consumes exports with timestamp to `\TurtleWoW\Imports\`. `/trtlog` does the same.
 <img width="1148" height="384" alt="image" src="https://github.com/user-attachments/assets/a347b653-8dd8-4d28-aea2-fb962e5a906f" />
 
-Auto Invite window will allow you to put in a string of keywords that when whsipered will autoinvite people to your party
+Auto Invite — enter comma-separated keywords; anyone who whispers an exact match gets auto-invited
 <img width="1091" height="577" alt="image" src="https://github.com/user-attachments/assets/b4310f7f-342c-41d3-b33d-7648f6cd91bf" />
 
-Autosummon Window will allow you to make a custom warlock summon message and scan chat for people looking for summons in certain locations 
+Auto Summon — configure a custom summon message and scan chat for location-specific summon requests
 <img width="1253" height="1108" alt="image" src="https://github.com/user-attachments/assets/1524aa7e-a030-4db8-813a-57f63d0ce0ae" />
 
-Both auto summon and guild recruitment have a count down timer for thier messages
+Auto Summon and Guild Recruitment both show a countdown timer panel above the main bar
 <img width="900" height="200" alt="image" src="https://github.com/user-attachments/assets/e074768e-86c9-45e8-a8c9-e1c938fd1dd6" />
 
-the check flask button will check for flasks and announce in officer who is missing
+Check Flasks announces to officer chat who is missing a Priority 1 flask
 <img width="997" height="448" alt="image" src="https://github.com/user-attachments/assets/e712fbea-1a53-47a1-9734-c4d109de7789" />
 
-the announce buffs button will announce who is missing what class buffs in raid
+Announce Buffs reports missing class buffs to raid chat
 <img width="857" height="478" alt="image" src="https://github.com/user-attachments/assets/45e90605-7047-45c4-9d31-333efd8bda26" />
-
-/trtlog will now log consumes at time of command in a new imports folder
-
-
-Main Panel
-<img width="731" height="248" alt="image" src="https://github.com/user-attachments/assets/008c2643-ccb4-43c4-95ab-42f39c1ff6d3" />
-
-Guild Recruitment Panel
-<img width="1206" height="1278" alt="image" src="https://github.com/user-attachments/assets/6b3658b1-2f69-4a70-8aa1-f1ea3bdbfa22" />
-
-Consume panel
-Log consumes button will log consumes with date time stamp in \TurtleWoW\Imports folder path /trtlog will also accomplish this function
-<img width="1148" height="384" alt="image" src="https://github.com/user-attachments/assets/a347b653-8dd8-4d28-aea2-fb962e5a906f" />
-
-Auto Invite window will allow you to put in a string of keywords that when whsipered will autoinvite people to your party
-<img width="1091" height="577" alt="image" src="https://github.com/user-attachments/assets/b4310f7f-342c-41d3-b33d-7648f6cd91bf" />
-
-Autosummon Window will allow you to make a custom warlock summon message and scan chat for people looking for summons in certain locations 
-<img width="1253" height="1108" alt="image" src="https://github.com/user-attachments/assets/1524aa7e-a030-4db8-813a-57f63d0ce0ae" />
-
-Both auto summon and guild recruitment have a count down timer for thier messages
-<img width="900" height="200" alt="image" src="https://github.com/user-attachments/assets/e074768e-86c9-45e8-a8c9-e1c938fd1dd6" />
-
-the check flask button will check for flasks and announce in officer who is missing
-<img width="997" height="448" alt="image" src="https://github.com/user-attachments/assets/e712fbea-1a53-47a1-9734-c4d109de7789" />
-
-the announce buffs button will announce who is missing what class buffs in raid
-<img width="857" height="478" alt="image" src="https://github.com/user-attachments/assets/45e90605-7047-45c4-9d31-333efd8bda26" />
-
-/trtlog will now log consumes at time of command in a new imports folder
