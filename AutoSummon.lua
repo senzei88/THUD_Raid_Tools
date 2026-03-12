@@ -186,30 +186,30 @@ function THUD.CreateAutoSummonPanel()
     if autoSummonPanel then return end
 
     local f = CreateFrame("Frame", "THUD_AutoSumPanel", UIParent)
-    f:SetWidth(280); f:SetHeight(45)
-    f:SetPoint("BOTTOM", THUD_MainBar, "TOP", 0, 4)
+    f:SetWidth(210); f:SetHeight(34)
+    f:SetPoint("BOTTOM", THUD_MainBar, "TOP", 0, 3)
     f:SetFrameStrata("HIGH")
     f:SetBackdrop({
         bgFile   = "Interface/Tooltips/UI-Tooltip-Background",
         edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-        edgeSize = 12, insets = {left=4, right=4, top=4, bottom=4}
+        edgeSize = 8, insets = {left=3, right=3, top=3, bottom=3}
     })
     f:SetBackdropColor(0.08, 0, 0.18, 0.92)
 
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    title:SetPoint("TOPLEFT", 10, -8)
+    title:SetPoint("TOPLEFT", 6, -6)
     title:SetText("|cffcc88ffAuto Summon...|r")
 
     local stopBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    stopBtn:SetWidth(44); stopBtn:SetHeight(16)
-    stopBtn:SetPoint("TOPRIGHT", -6, -6)
+    stopBtn:SetWidth(36); stopBtn:SetHeight(14)
+    stopBtn:SetPoint("TOPRIGHT", -4, -4)
     stopBtn:SetText("|cffff4444Stop|r")
     stopBtn:SetScript("OnClick", function() THUD.StopAutoSummon() end)
 
     local bar = CreateFrame("StatusBar", nil, f)
-    bar:SetPoint("TOPLEFT",  title,   "BOTTOMLEFT",  0, -4)
-    bar:SetPoint("TOPRIGHT", stopBtn, "BOTTOMRIGHT", 0, -4)
-    bar:SetHeight(10)
+    bar:SetPoint("TOPLEFT",  title,   "BOTTOMLEFT",  0, -3)
+    bar:SetPoint("TOPRIGHT", stopBtn, "BOTTOMRIGHT", 0, -3)
+    bar:SetHeight(8)
     bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     bar:SetStatusBarColor(0.6, 0.1, 0.8, 1)
     bar:SetMinMaxValues(0, 1)
