@@ -129,6 +129,7 @@ local importantBuffs = {
     ["Interface\\Icons\\Spell_Misc_Food"] = {name="Well Fed", priority=4},
     ["Interface\\Icons\\INV_Misc_Dust_02"] = {name="Scorpok", priority=4},
     ["Interface\\Icons\\Spell_Ice_Lament"] = {name="Cerebral Cortex", priority=4},
+    ["Interface\\Icons\\Spell_Fire_Incinerate"] = {name="Gizzard Gum", priority=4},
     ["Interface\\Icons\\inv_drink_04"] = {name="Merlot Blue", priority=4},
     ["Interface\\Icons\\inv_potion_114"] = {name="Dreamtonic", priority=4},
 }
