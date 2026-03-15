@@ -96,7 +96,7 @@ local importantBuffs = {
     ["Interface\\Icons\\INV_Potion_32"] = {name="Mongoose", priority=3},
     ["Interface\\Icons\\INV_Potion_45"] = {name="Mageblood", priority=3},
     ["Interface\\Icons\\INV_Potion_61"] = {name="Giants", priority=3},
-    ["Interface\\Icons\\INV_Potion_106"] = {name="Elixir of Greater Nature Power", priority=3},
+    ["Interface\\Icons\\inv_potion_106"] = {name="Elixir of Greater Nature Power", priority=3},
     ["Interface\\Icons\\inv_green_pink_elixir_1"] = {name="Concoction of the Dream Water", priority=3},
     ["Interface\\Icons\\INV_Potion_46"] = {name="Shadow Power", priority=3},
     ["Interface\\Icons\\INV_Potion_60"] = {name="Firepower", priority=3},
