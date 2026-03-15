@@ -96,6 +96,7 @@ local importantBuffs = {
     ["Interface\\Icons\\INV_Potion_32"] = {name="Mongoose", priority=3},
     ["Interface\\Icons\\INV_Potion_45"] = {name="Mageblood", priority=3},
     ["Interface\\Icons\\INV_Potion_61"] = {name="Giants", priority=3},
+    ["Interface\\Icons\\INV_Potion_106"] = {name="Elixir of Greater Nature Power", priority=3},
     ["Interface\\Icons\\inv_green_pink_elixir_1"] = {name="Concoction of the Dream Water", priority=3},
     ["Interface\\Icons\\INV_Potion_46"] = {name="Shadow Power", priority=3},
     ["Interface\\Icons\\INV_Potion_60"] = {name="Firepower", priority=3},
@@ -117,6 +118,7 @@ local importantBuffs = {
     ["Interface\\Icons\\Spell_Nature_ManaRegenTotem"] = {name="MP5 Food", priority=3},
     ["Interface\\Icons\\Spell_Holy_FlashHeal"] = {name="Greater Arcane Power", priority=3},
     ["Interface\\Icons\\Spell_Holy_Devotion"] = {name="Instant Strength Food", priority=3},
+
     
     -- WORLD BUFFS, FOOD & SPECIALS (Priority 4)
     ["Interface\\Icons\\INV_Misc_MonsterScales_07"] = {name="Juju Might", priority=4},
@@ -127,6 +129,7 @@ local importantBuffs = {
     ["Interface\\Icons\\Spell_Misc_Food"] = {name="Well Fed", priority=4},
     ["Interface\\Icons\\INV_Misc_Dust_02"] = {name="Scorpok", priority=4},
     ["Interface\\Icons\\Spell_Ice_Lament"] = {name="Cerebral Cortex", priority=4},
+    ["Interface\\Icons\\inv_drink_04"] = {name="Merlot Blue", priority=4},
     ["Interface\\Icons\\inv_potion_114"] = {name="Dreamtonic", priority=4},
 }
 
