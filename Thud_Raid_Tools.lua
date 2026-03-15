@@ -106,7 +106,7 @@ local importantBuffs = {
     ["Interface\\Icons\\INV_Potion_10"] = {name="Greater Intellect", priority=3},
     ["Interface\\Icons\\INV_Potion_22"] = {name="Greater Nature", priority=3},
     ["Interface\\Icons\\INV_Potion_03"] = {name="Frost Power", priority=3},
-    ["Interface\\Icons\\INV_Potion_28"] = {name="Gift of Arthas", priority=3},
+    ["Interface\\Icons\\Spell_Shadow_FingerOfDeath"] = {name="Gift of Arthas", priority=3},
     ["Interface\\Icons\\inv_potion_113"] = {name="Dreamshard", priority=3},
     ["Interface\\Icons\\inv_yellow_purple_elixir_2"] = {name="Concoction of the Arcane Giant", priority=3},
     ["Interface\\Icons\\inv_blue_gold_elixir_2"] = {name="Concoction of the Emerald Mongoose", priority=3},
