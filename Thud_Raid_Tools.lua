@@ -646,8 +646,16 @@ local function LogConsumesToExport()
 
     -- 3. Export via SuperWoW
     if type(ExportFile) == "function" then
-        -- This creates C:\Games\TurtleWoW\Exports\Consumes_YYYY-MM-DD_HH-MM-SS.txt
-        local fileName = "Consumes_" .. timestamp
+        -- Append current target name to the filename if one exists
+        local targetName = UnitName("target")
+        local targetSuffix = ""
+        if targetName then
+            -- Sanitize: remove any characters unsafe for filenames
+            targetSuffix = "_" .. string.gsub(targetName, "[^%w]", "")
+        end
+
+        -- This creates C:\Games\TurtleWoW\Exports\Consumes_YYYY-MM-DD_HH-MM-SS_TargetName.txt
+        local fileName = "Consumes_" .. timestamp .. targetSuffix
         ExportFile(fileName, fileContent)
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00THUD:|r Exported log to Exports\\" .. fileName .. ".txt")
     else
