@@ -127,7 +127,7 @@ local importantBuffs = {
     ["Interface\\Icons\\INV_Potion_31"] = {name="Zanza", priority=4},
     ["Interface\\Icons\\Spell_Nature_Strength"] = {name="Rage of Ages", priority=4}, 
     ["Interface\\Icons\\Spell_Misc_Food"] = {name="Well Fed", priority=4},
-    ["Interface\\Icons\\INV_Misc_Dust_02"] = {name="Scorpok", priority=4},
+    ["Interface\\Icons\\Spell_Nature_ForceOfNature"] = {name="Scorpok", priority=4},
     ["Interface\\Icons\\Spell_Ice_Lament"] = {name="Cerebral Cortex", priority=4},
     ["Interface\\Icons\\Spell_Fire_Incinerate"] = {name="Gizzard Gum", priority=4},
     ["Interface\\Icons\\inv_drink_04"] = {name="Merlot Blue", priority=4},
