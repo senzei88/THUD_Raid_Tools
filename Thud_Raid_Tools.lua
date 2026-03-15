@@ -82,7 +82,7 @@ local classBuffTextures = {
 local importantBuffs = {
     -- FLASKS (Priority 1)
     ["Interface\\Icons\\INV_Potion_41"] = {name="Flask of Supreme Power", priority=1},
-    ["Interface\\Icons\\INV_Potion_97"] = {name="Flask of Distilled Wisdom", priority=1},
+    ["Interface\\Icons\\INV_Potion_120"] = {name="Flask of Distilled Wisdom", priority=1},
     ["Interface\\Icons\\INV_Potion_62"] = {name="Flask of the Titans", priority=1},
     
     -- PROTECTION POTIONS (Priority 2)
